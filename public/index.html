@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>La sala es el código</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="jugador">
+
+<!-- Conexión: punto discreto arriba a la derecha y banda al perderla -->
+<div id="conexion" class="conexion" aria-hidden="true"></div>
+<div id="reconectando" class="banda" hidden>Reconectando…</div>
+<div id="pausa" class="banda banda-pausa" hidden>Pausa</div>
+
+<!-- ENTRADA -->
+<section data-pantalla="entrada">
+  <h1 class="logo">La sala<br>es el código</h1>
+  <form id="form-entrada" class="tarjeta" autocomplete="off">
+    <label for="alias">Tu alias</label>
+    <input id="alias" name="alias" maxlength="12" required enterkeyhint="go" spellcheck="false">
+    <span class="etiqueta">Tu color</span>
+    <div id="colores" class="colores" role="radiogroup" aria-label="Tu color"></div>
+    <p id="error-entrada" class="error" role="alert"></p>
+    <button type="submit" class="boton-grande">Entrar al match</button>
+  </form>
+</section>
+
+<!-- LOBBY -->
+<section data-pantalla="lobby" hidden>
+  <div class="centro">
+    <div class="ficha"><span class="punto-propio"></span> <strong id="lobby-alias"></strong></div>
+    <p class="equipo-nombre">Equipo <span id="lobby-equipo"></span></p>
+    <p class="mira">👀 Mira la pantalla grande</p>
+    <p id="lobby-ronda" class="sutil"></p>
+  </div>
+</section>
+
+<!-- COUNTDOWN -->
+<section data-pantalla="countdown" hidden>
+  <div class="centro">
+    <div id="cuenta" class="cuenta">3</div>
+    <p id="cuenta-texto" class="mira">¡Prepárate!</p>
+  </div>
+</section>
+
+<!-- RONDA / FINAL -->
+<section data-pantalla="juego" hidden>
+  <header class="hud">
+    <div><span id="hud-puntos" class="hud-grande">0</span> pts</div>
+    <div id="hud-posicion" class="hud-posicion">#–</div>
+    <div id="hud-tiempo" class="hud-tiempo">0:00</div>
+  </header>
+  <div id="gran-final" class="gran-final" hidden>GRAN FINAL</div>
+  <canvas id="minimapa" class="minimapa" aria-label="Tu posición en la arena"></canvas>
+  <div id="reglas" class="reglas"></div>
+  <div id="zona-joystick" class="zona-joystick">
+    <div id="joystick" class="joystick" hidden><div id="palanca" class="palanca"></div></div>
+    <p class="pista">Arrastra aquí para moverte</p>
+  </div>
+  <button id="embestida" class="embestida" type="button" aria-label="Embestir">
+    <span>💥</span>
+  </button>
+</section>
+
+<!-- RESULTADOS -->
+<section data-pantalla="resultados" hidden>
+  <div class="centro">
+    <p id="res-ganador" class="titular"></p>
+    <p id="res-marcador" class="marcador"></p>
+    <div class="tarjeta">
+      <p>Tú: <strong id="res-tu"></strong></p>
+      <p id="res-mvp"></p>
+    </div>
+    <p id="res-destacado" class="sutil"></p>
+  </div>
+</section>
+
+<!-- PARCHE -->
+<section data-pantalla="parche" hidden>
+  <h2 id="parche-version" class="titular">Parche</h2>
+  <form id="form-propuesta" class="tarjeta" autocomplete="off">
+    <label for="propuesta">Propón una regla</label>
+    <textarea id="propuesta" rows="2" maxlength="80" placeholder="Ej.: los orbes dorados valen x5" enterkeyhint="send"></textarea>
+    <div class="fila">
+      <span id="contador" class="sutil">0/80</span>
+      <button type="submit" class="boton">Proponer</button>
+    </div>
+    <p id="msg-propuesta" class="sutil" role="status"></p>
+  </form>
+  <h3 class="etiqueta">Vota la siguiente regla</h3>
+  <ul id="candidatas" class="candidatas"></ul>
+  <p id="msg-voto" class="error" role="alert"></p>
+</section>
+
+<!-- CEREMONIA -->
+<section data-pantalla="ceremonia" hidden>
+  <div class="centro">
+    <p id="cer-ganador" class="titular"></p>
+    <ol id="cer-podio" class="podio"></ol>
+    <div class="tarjeta">
+      <p>Tú: <strong id="cer-tu"></strong></p>
+      <p id="cer-parches" class="sutil"></p>
+    </div>
+    <p class="mira">¡Gracias por jugar!</p>
+  </div>
+</section>
+
+<!-- ESPECTADOR -->
+<section data-pantalla="espectador" hidden>
+  <div class="centro">
+    <p class="titular">Ronda en curso</p>
+    <p>Entras en la siguiente ronda</p>
+    <p class="mira">👀 Mira la pantalla grande</p>
+  </div>
+</section>
+
+<!-- Avisos a pantalla completa: anuncios y parches -->
+<div id="aviso" class="aviso" hidden>
+  <p id="aviso-titulo" class="aviso-titulo"></p>
+  <p id="aviso-texto" class="aviso-texto"></p>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="/player.js"></script>
+</body>
+</html>

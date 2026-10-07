@@ -365,7 +365,7 @@ function pintarFase() {
     case FASES.LOBBY: return mensaje(`Equipo ${eq}`, '¡DENTRO!', 'Mira la pantalla grande', 'La partida empieza en breve');
     case FASES.COUNTDOWN: return mensaje(d.siguiente === FASES.FINAL ? 'Gran final' : `Ronda ${f.ronda + 1}`, '3', '¡Prepárate!');
     case FASES.RONDA: case FASES.FINAL:
-      if (st.me?.espectador) return mensaje('Espectador', '👀', 'Entras en la siguiente ronda', 'Mira la pantalla grande');
+      if (st.me?.espectador) return mensaje('Espectador', '–', 'Entras en la siguiente ronda', 'Mira la pantalla grande mientras tanto');
       return ver('sJuego');
     case FASES.RESULTADOS: {
       const a = d.equipos?.azul ?? 0; const n = d.equipos?.naranja ?? 0; const gana = a === n ? 'EMPATE' : (a > n ? 'AZUL' : 'NARANJA');
@@ -387,6 +387,11 @@ setInterval(() => {
   $('reloj').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   $('reloj').classList.toggle('urgente', s <= 10);
   $('pReloj').textContent = `${s} s`;
+  // Espectador: cuenta atrás grande hasta que acaba la ronda en curso.
+  if ((st.fase.fase === FASES.RONDA || st.fase.fase === FASES.FINAL) && st.unido && st.me?.espectador) {
+    $('mGrande').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    $('mTexto').textContent = 'para que acabe la ronda: después entras tú';
+  }
   if (st.fase.fase === FASES.COUNTDOWN && st.unido) { const v = s > 0 ? String(s) : '¡YA!'; if ($('mGrande').textContent !== v) Son.cuenta(s); $('mGrande').textContent = v; }
 }, 200);
 

@@ -1,0 +1,22 @@
+{
+  "name": "la-sala-es-el-codigo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo en directo para Claude Community: el público juega desde el móvil y vota cambios que Claude programa en directo.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "smoke": "node infra/smoke-server.js",
+    "tunnel": "bash infra/tunnel.sh",
+    "loadtest": "node infra/loadtest.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

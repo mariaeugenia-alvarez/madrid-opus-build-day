@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Demo en directo para Claude Community: el público juega desde el móvil y vota cambios que Claude programa en directo.",
+  "type": "module",
   "engines": {
     "node": ">=20"
   },

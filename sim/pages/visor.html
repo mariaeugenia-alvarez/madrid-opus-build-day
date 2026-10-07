@@ -45,9 +45,9 @@
   </aside>
 </main>
 <div id="anuncio"></div>
-<script src="/shared/contract.js"></script>
 <script src="/socket.io/socket.io.js"></script>
-<script>
+<script type="module">
+  import * as CONTRATO from '/shared/contract.js';
   const { EV, ARENA } = CONTRATO;
   const $ = (id) => document.getElementById(id);
   const key = new URLSearchParams(location.search).get('key') || prompt('Clave del visor') || '';
@@ -83,6 +83,7 @@
     clearTimeout(window._an); window._an = setTimeout(() => { $('anuncio').style.display = 'none'; }, 2000);
   });
 
+  window.ctl = ctl;
   function ctl(accion, id) { socket.emit(EV.CONTROL, { accion, id }, (r) => { if (!r.ok) console.warn(r.error); }); }
   document.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => ctl(b.dataset.a));
   addEventListener('keydown', (e) => {

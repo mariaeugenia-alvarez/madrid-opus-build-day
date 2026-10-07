@@ -3,11 +3,10 @@
 //   url por defecto: la del último túnel (infra/.tunnel-url) o localhost:3000
 // Mide: conexiones OK/fallidas (y por qué), latencia p50/p95/p99 y ticks/s recibidos.
 
-const fs = require('fs');
-const path = require('path');
-const { io } = require('socket.io-client');
+import fs from 'node:fs';
+import { io } from 'socket.io-client';
 
-const urlFile = path.join(__dirname, '.tunnel-url');
+const urlFile = new URL('./.tunnel-url', import.meta.url);
 const URL = process.argv[2]
   || (fs.existsSync(urlFile) ? fs.readFileSync(urlFile, 'utf8').trim() : 'http://localhost:3000');
 const N = Number(process.argv[3]) || 200;

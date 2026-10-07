@@ -1,12 +1,13 @@
 // Comprobación de extremo a extremo del simulador: un visor y un jugador recorren
 // un match completo y se verifica que llegan todos los eventos del contrato.
 // Uso: node sim/check.js [url] [segundos]   (mejor con fases cortas: npm run sim:dev)
-const { io } = require('socket.io-client');
-const { EV, FASES } = require('../shared/contract');
+import { io } from 'socket.io-client';
+import { EV, FASES } from '../shared/contract.js';
 
 const URL = process.argv[2] || 'http://localhost:3000';
 const SEGUNDOS = Number(process.argv[3]) || 30;
-const KEY = process.env.VISOR_KEY || 'demo';
+const KEY = process.env.VISOR_KEY;
+if (!KEY) { console.error('Falta VISOR_KEY (la misma que usa el simulador)'); process.exit(2); }
 const vistos = {};
 const fases = [];
 const fallos = [];

@@ -3,24 +3,29 @@
 // simplificado, para que móvil (P2), visor (P3) y estadísticas (P4) trabajen sin
 // esperar al servidor real (P1). No es el servidor de la demo.
 //
-// Variables: PORT=3000 BOTS=40 VISOR_KEY=demo AUTO=1 RONDAS=3
+// Variables: PORT=3000 BOTS=40 VISOR_KEY=<clave> AUTO=1 RONDAS=3
+//            (sin VISOR_KEY se genera una aleatoria y se muestra al arrancar: nunca en el código)
 //            LOBBY_S=10 RONDA_S=90 RESULTADOS_S=10 PARCHE_S=20 FINAL_S=90 CEREMONIA_S=20
 // AUTO=1: las fases avanzan solas y los bots proponen y votan. AUTO=0: LOBBY y PARCHE
 // esperan a `control: iniciar` desde el visor.
 
-const fs = require('fs');
-const path = require('path');
-const http = require('http');
-const express = require('express');
-const { Server } = require('socket.io');
-const C = require('../shared/contract');
+import fs from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
+import { Server } from 'socket.io';
+import * as C from '../shared/contract.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { EV, FASES, ARENA, REGLAS_BASE: R, LIMITES, HEATMAP, EQUIPOS } = C;
 const num = (v, d) => (v === undefined || v === '' ? d : Number(v));
 
 const PORT = num(process.env.PORT, 3000);
 const BOTS = num(process.env.BOTS, 40);
-const VISOR_KEY = process.env.VISOR_KEY || 'demo';
+const VISOR_KEY = process.env.VISOR_KEY || crypto.randomBytes(4).toString('hex');
 const AUTO = process.env.AUTO !== '0';
 const RONDAS = num(process.env.RONDAS, 3);
 const DUR = {

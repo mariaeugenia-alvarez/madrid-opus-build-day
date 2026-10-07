@@ -52,9 +52,9 @@
   </div>
 </div>
 <div id="anuncio"></div>
-<script src="/shared/contract.js"></script>
 <script src="/socket.io/socket.io.js"></script>
-<script>
+<script type="module">
+  import * as CONTRATO from '/shared/contract.js';
   const { EV, FASES } = CONTRATO;
   const $ = (id) => document.getElementById(id);
   const socket = io({ transports: ['websocket'] });

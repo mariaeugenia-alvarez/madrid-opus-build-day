@@ -3,9 +3,9 @@
 // antes de que exista el servidor real. Emite un "estado" falso a TICK_HZ
 // con un tamaño parecido al que tendrá el juego.
 
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+import http from 'node:http';
+import express from 'express';
+import { Server } from 'socket.io';
 
 const PORT = Number(process.env.PORT) || 3000;
 const TICK_HZ = Number(process.env.TICK_HZ) || 20;

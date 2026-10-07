@@ -467,6 +467,11 @@ io.on('connection', (socket) => {
 });
 
 // ------------------------------------------------------------------ bucles
+// Un error en un bucle se registra y el proceso sigue: hay gente conectada.
+const seguro = (nombre, fn) => () => {
+  try { fn(); } catch (err) { console.error(`[${nombre}] error:`, err); }
+};
+
 for (let i = 0; i < BOTS; i++) {
   const base = NOMBRES[i % NOMBRES.length];
   const alias = i < NOMBRES.length ? base : `${base}${Math.floor(i / NOMBRES.length)}`;
@@ -474,7 +479,7 @@ for (let i = 0; i < BOTS; i++) {
 }
 reponerOrbes();
 
-setInterval(() => {
+setInterval(seguro('tick', () => {
   tick += 1;
   if (JUEGO.has(fase) && !pausado) {
     paso(1 / C.TICK_HZ);
@@ -502,9 +507,9 @@ setInterval(() => {
       o: JUEGO.has(fase) ? orbes.map((o) => [Math.round(o.x), Math.round(o.y)]) : [],
     });
   }
-}, 1000 / C.TICK_HZ);
+}), 1000 / C.TICK_HZ);
 
-setInterval(() => {
+setInterval(seguro('me', () => {
   const orden = [...jugadores.values()].sort((a, b) => b.total - a.total);
   const t = now();
   orden.forEach((j, i) => {
@@ -515,18 +520,18 @@ setInterval(() => {
       posicion: i + 1, de: orden.length, recargaMs: Math.max(0, j.recargaHasta - t), voto: j.voto,
     });
   });
-}, 1000 / C.ME_HZ);
+}), 1000 / C.ME_HZ);
 
-setInterval(() => {
+setInterval(seguro('difusion', () => {
   if (rosterSucio) { rosterSucio = false; io.to('visor').emit(EV.JUGADORES, roster()); }
   if (votacionSucia) {
     votacionSucia = false;
     io.to('visor').emit(EV.PROPUESTAS, listaPropuestas());
     if (fase === FASES.PARCHE) io.emit(EV.VOTACION, candidatas());
   }
-}, 500);
+}), 500);
 
-setInterval(() => {
+setInterval(seguro('stats', () => {
   const lista = activos();
   const orden = [...lista].sort((a, b) => b.puntos - a.puntos);
   const [azul, naranja] = puntosEquipos();
@@ -546,7 +551,7 @@ setInterval(() => {
     parches,
     heatmap: { ancho: HEATMAP.ancho, alto: HEATMAP.alto, celdas: rondaSt.heat },
   });
-}, 1000 / C.STATS_HZ);
+}), 1000 / C.STATS_HZ);
 
 server.listen(PORT, () => {
   console.log(`simulador en http://localhost:${PORT}  · visor /sim/visor?key=${VISOR_KEY} · jugar /sim/jugar`);

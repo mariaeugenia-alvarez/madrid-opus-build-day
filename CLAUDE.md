@@ -50,6 +50,8 @@ public/visor.html      # pantalla de retransmisión                             
 public/visor.js        #                                                                             (andrsbayona)
 public/styles.css      # estilos compartidos                                                         (mariaeugenia-alvarez + andrsbayona)
 infra/                 # servidor de humo, túnel de Cloudflare y prueba de carga                     (Pablo Albaladejo)
+shared/contract.js     # contrato de comunicación (provisional; lo cierra adevex-drone)              (adevex-drone)
+sim/                   # simulador del servidor con bots para trabajar sin el servidor real         (Pablo Albaladejo)
 ```
 
 ## Invariantes de la arquitectura

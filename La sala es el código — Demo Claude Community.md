@@ -4,7 +4,7 @@ Oct 7, 2026 · @Juan Pablo
 
 ## Concepto
 
-En 60 minutos, Claude construye en directo un juego multijugador al que toda la sala se conecta desde el móvil, y lo reescribe en tiempo real según lo que vota el público. El público no mira la demo: es la demo. Tiene que tener efecto WOW e incluir efectos especiales que ambienten el juego.
+En 60 minutos, Claude construye en directo un juego multijugador al que toda la sala se conecta desde el móvil, y lo reescribe en tiempo real según lo que vota el público. El público no mira la demo: es la demo. Tiene que tener efecto WOW e incluir efectos especiales de audio que ambienten el juego.
 
 Todo se presenta como un evento de eSports: hay rondas, marcador, clasificación en vivo, estadísticas y una gran final. El portátil del presentador actúa como pantalla de retransmisión.
 

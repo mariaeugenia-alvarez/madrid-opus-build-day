@@ -4,6 +4,17 @@ Juego multijugador web en el que juega toda la sala desde el móvil. Lo usamos e
 
 **Este proyecto se usa en directo, delante de 100–150 personas conectadas.** Un servidor caído es peor que una regla mal hecha. Ante la duda, prioriza la estabilidad.
 
+## Equipo
+
+| # | Persona | Tarea | Responsable de |
+| --- | --- | --- | --- |
+| 1 | adevex-drone | Motor y servidor | Reglas del juego en el servidor, estados del match y contrato de comunicación |
+| 2 | mariaeugenia-alvarez | Cliente jugador | Todo lo que se ve y se toca en el móvil |
+| 3 | andrsbayona | Visor de retransmisión | La pantalla grande y el panel de control del presentador |
+| 4 | Yerai | Estadísticas | Qué se mide, cómo se cuenta y cómo convertirlo en espectáculo |
+| 5 | dsprofesionalia | Reglas y nivel final | El sistema de cambios en directo y su operación durante la demo |
+| 6 | Pablo Albaladejo | Infraestructura y QA | Que funcione con 150 personas reales y el plan B |
+
 ## Stack
 
 - Node.js 20 o superior, ES modules (`"type": "module"`).
@@ -28,12 +39,17 @@ cloudflared tunnel --url http://localhost:3000 # URL pública para el QR
 ## Estructura
 
 ```text
-server.js          # Express + Socket.IO, bucle a 20 ticks/s, máquina de estados, carga de reglas
-game/state.js      # jugadores, equipos, orbes, puntuaciones
-game/stats.js      # cálculo de estadísticas
-game/rules/        # una regla por archivo; base.js es el juego base
-game/levels/       # nivel final (final.js)
-public/            # index.html + player.js (móvil), visor.html + visor.js (pantalla), styles.css
+server.js              # Express + Socket.IO, bucle a 20 ticks/s, máquina de estados, carga de reglas  (adevex-drone)
+game/state.js          # jugadores, equipos, orbes, puntuaciones                                     (adevex-drone)
+game/stats.js          # cálculo de estadísticas                                                     (Yerai)
+game/rules/            # una regla por archivo; base.js es el juego base                             (dsprofesionalia)
+game/levels/           # nivel final (final.js)                                                      (dsprofesionalia)
+public/index.html      # cliente jugador (móvil)                                                     (mariaeugenia-alvarez)
+public/player.js       #                                                                             (mariaeugenia-alvarez)
+public/visor.html      # pantalla de retransmisión                                                   (andrsbayona)
+public/visor.js        #                                                                             (andrsbayona)
+public/styles.css      # estilos compartidos                                                         (mariaeugenia-alvarez + andrsbayona)
+infra/                 # servidor de humo, túnel de Cloudflare y prueba de carga                     (Pablo Albaladejo)
 ```
 
 ## Invariantes de la arquitectura

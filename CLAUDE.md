@@ -19,22 +19,25 @@ Juego multijugador web en el que juega toda la sala desde el móvil. Lo usamos e
 
 - Node.js 20 o superior, ES modules (`"type": "module"`).
 - `express`: sirve `/` (jugador) y `/visor` (retransmisión).
-- `socket.io`: tiempo real. El cliente se sirve desde `/socket.io/socket.io.js`.
+- `socket.io`: tiempo real, **solo por WebSocket** (`transports: ['websocket']`) en servidor y clientes. El cliente se sirve desde `/socket.io/socket.io.js`.
 - `qrcode`: genera el QR del visor.
-- `nanoid`: IDs cortos de jugador.
-- `nodemon` (solo en dev). Debe ignorar `game/rules/` y `game/levels/`, que se recargan en caliente.
-- Frontend: Canvas 2D y JavaScript nativo. Sin bundler, sin framework, sin dependencias que haya que compilar.
+- `socket.io-client` (solo en dev): bots de la prueba de carga y del simulador.
+- Frontend: Canvas 2D y JavaScript nativo con `<script type="module">`. Sin bundler, sin framework, sin dependencias que haya que compilar.
 
-No añadas dependencias nuevas sin pedir permiso.
+No añadas dependencias nuevas sin pedir permiso. Si alguien usa un recargador como `nodemon`, debe ignorar `game/rules/` y `game/levels/`, que se recargan en caliente.
 
 ## Comandos
 
 ```bash
 npm install
-npm run dev                                    # servidor en http://localhost:3000
-VISOR_KEY=secreto npm start                    # producción; la clave del visor sale de la variable de entorno
-cloudflared tunnel --url http://localhost:3000 # URL pública para el QR
+npm run sim:dev                     # simulador con bots y fases cortas en http://localhost:3000 (sin servidor real)
+npm run sim                         # simulador con la duración real de las fases
+VISOR_KEY=secreto npm run sim:check # recorre un match completo y comprueba el contrato
+npm run tunnel                      # URL pública + QR (Cloudflare Quick Tunnel)
+npm run loadtest -- [url] [clientes] [segundos]
 ```
+
+El servidor real (`server.js`) aún no existe; cuando exista, añadirá sus propios scripts.
 
 ## Estructura
 
@@ -59,9 +62,10 @@ sim/                   # simulador del servidor con bots para trabajar sin el se
 1. **El servidor es autoritativo.** Los clientes solo envían entradas (`input`, `propuesta`, `voto`, `control`) y pintan lo que reciben. Toda la lógica de juego vive en el servidor.
 2. **Nunca cortar las conexiones activas.** Las reglas se recargan con `fs.watch` + `import('./rules/x.js?v=' + Date.now())`. Ningún cambio en `game/rules/` o `game/levels/` puede exigir reiniciar el proceso ni recargar los móviles.
 3. **Una regla rota no tumba el juego.** El servidor envuelve cada hook de regla en `try/catch`. Si una regla lanza un error, se desactiva, se registra en el log y se avisa en el visor. El bucle sigue.
-4. **El estado viaja ya calculado.** `state` (20/s) y `stats` (1/s, solo al visor) se envían ya listos. El móvil recibe solo sus propios datos en `me`.
+4. **El móvil es un mando.** El estado completo (`state`, 20/s) y `stats` (1/s) van **solo al visor**. Cada móvil recibe únicamente sus propios datos en `me` (10/s). Enviar el estado a 150 móviles satura la subida; está medido en `infra/AGENTS.md`. No se cambia sin medir con `infra/loadtest.js`.
 5. **Moderación obligatoria.** Ninguna propuesta del público se muestra en pantalla ni se vota hasta que el visor la aprueba.
 6. **La clave del visor** viene de `VISOR_KEY`. Nunca debe estar en el código ni en el repositorio.
+7. **El contrato es la fuente de verdad.** Los nombres de evento, las fases, los límites y la forma de cada mensaje están en `shared/contract.js`. Se importan de ahí; nunca se escriben como cadenas sueltas. Los cambios se piden a adevex-drone (ver `shared/AGENTS.md`).
 
 ## Interfaz de una regla
 

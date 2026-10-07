@@ -1,0 +1,237 @@
+/* La sala es el código — estilos compartidos.
+   Variables de tema (Coliseo Romano): todos los componentes las usan.
+   Secciones: Variables compartidas · Visor (Persona 3, andrsbayona) · Jugador (Persona 2, pendiente). */
+
+:root {
+  --piedra: #241a16;
+  --piedra-clara: #3a2b24;
+  --piedra-mas-clara: #513b31;
+  --marmol: #ece4d3;
+  --marmol-oscuro: #c9bfa5;
+  --oro: #d4af37;
+  --oro-claro: #f1d78c;
+  --purpura: #4b1035;
+  --purpura-clara: #7a1f52;
+  --terracota: #b5651d;
+  --arena: #c9a66b;
+  --azul: #2563eb;
+  --azul-clara: #60a5fa;
+  --naranja: #ea580c;
+  --naranja-clara: #fb923c;
+  --texto: #f3ead9;
+  --mute: #b9ac8e;
+  --sombra: rgba(0, 0, 0, .55);
+  font-family: 'Trajan Pro', Cinzel, 'Palatino Linotype', Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% -10%, var(--piedra-mas-clara), var(--piedra) 60%);
+  color: var(--texto);
+  font-family: Georgia, 'Palatino Linotype', serif;
+}
+
+/* ===================== Visor (Persona 3) ===================== */
+
+#coliseo {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 1fr 300px;
+  height: 100vh;
+  gap: 10px;
+  padding: 10px;
+}
+
+.placa {
+  background: linear-gradient(180deg, var(--piedra-clara), var(--piedra));
+  border: 2px solid var(--oro);
+  border-radius: 10px;
+  padding: 8px 14px;
+  box-shadow: inset 0 0 12px var(--sombra);
+}
+
+#cabecera {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fase-info { text-align: left; min-width: 180px; }
+.fase-info #fase-nombre { font-size: 18px; font-weight: 700; color: var(--oro-claro); letter-spacing: .04em; text-transform: uppercase; }
+.fase-info #fase-ronda { display: block; font-size: 12px; color: var(--mute); margin-top: 2px; }
+
+.marcador-marmol {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(180deg, var(--marmol), var(--marmol-oscuro));
+  color: #241a16;
+  border: 3px solid var(--oro);
+  border-radius: 12px;
+  padding: 8px 22px;
+  box-shadow: 0 0 20px rgba(212, 175, 55, .35), inset 0 0 10px rgba(0, 0, 0, .25);
+}
+.marcador-marmol .equipo { display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 800; }
+.marcador-marmol .equipo-azul { color: var(--azul); }
+.marcador-marmol .equipo-naranja { color: var(--naranja); }
+.marcador-marmol .escudo { width: 16px; height: 16px; border-radius: 3px; display: inline-block; transform: rotate(45deg); }
+.marcador-marmol .equipo-azul .escudo { background: var(--azul); }
+.marcador-marmol .equipo-naranja .escudo { background: var(--naranja); }
+.marcador-marmol .vs { font-size: 12px; color: #6b5d4a; font-weight: 700; }
+.marcador-marmol .reloj { font-size: 20px; font-weight: 700; min-width: 54px; text-align: center; }
+
+.ciudadanos { text-align: right; min-width: 160px; font-size: 14px; }
+.ciudadanos .mute { color: var(--mute); }
+
+#arena-wrap {
+  position: relative;
+  border: 6px solid var(--piedra-mas-clara);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--arena);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, .55);
+}
+
+#arena { width: 100%; height: 100%; display: block; }
+
+.graderio {
+  position: absolute;
+  left: 0; right: 0;
+  height: 34px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 10px 16px, rgba(243, 234, 217, .35) 5px, transparent 6px),
+    radial-gradient(circle at 30px 10px, rgba(243, 234, 217, .25) 5px, transparent 6px),
+    radial-gradient(circle at 50px 18px, rgba(243, 234, 217, .3) 5px, transparent 6px);
+  background-size: 60px 34px;
+  background-repeat: repeat-x;
+  background-color: var(--piedra-mas-clara);
+}
+.graderio-top { top: 0; }
+.graderio-bottom { bottom: 0; }
+
+#palco {
+  background: linear-gradient(180deg, var(--purpura-clara), var(--purpura));
+  border: 3px solid var(--oro);
+  border-radius: 14px;
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#palco h2 {
+  margin: 0; font-size: 15px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--oro-claro); text-align: center; border-bottom: 1px solid rgba(212, 175, 55, .4); padding-bottom: 8px;
+}
+#palco h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; color: var(--oro-claro); letter-spacing: .06em; }
+#palco section { background: rgba(0, 0, 0, .2); border: 1px solid rgba(212, 175, 55, .3); border-radius: 10px; padding: 10px; }
+#palco ol, #palco ul { margin: 0; padding-left: 18px; font-size: 13px; }
+#palco li { margin: 3px 0; }
+
+.cesar-silueta {
+  width: 100%; height: 56px; margin: -4px auto 0;
+  background:
+    radial-gradient(circle at 50% 30%, var(--oro) 0 6px, transparent 7px),
+    linear-gradient(var(--oro) 0 0) no-repeat 50% 40% / 3px 22px,
+    linear-gradient(var(--oro) 0 0) no-repeat 42% 55% / 16px 3px;
+  opacity: .85;
+}
+
+.control { display: flex; flex-wrap: wrap; gap: 6px; }
+.control button, #palco button {
+  flex: 1 1 auto;
+  background: linear-gradient(180deg, var(--oro-claro), var(--oro));
+  color: #241a16;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 12px;
+}
+.control button:hover, #palco button:hover { filter: brightness(1.1); }
+.edicto-botones button { padding: 2px 8px; margin-left: 4px; font-size: 12px; }
+
+#pregon div { font-size: 12px; color: var(--mute); padding: 2px 0; border-bottom: 1px dashed rgba(212, 175, 55, .15); }
+
+/* -------- overlays de pantalla completa -------- */
+.overlay {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(18, 10, 8, .88);
+  text-align: center;
+  z-index: 50;
+}
+.overlay.oculto { display: none; }
+
+.puertas-arco {
+  width: min(70vw, 560px);
+  padding: 50px 30px 30px;
+  border: 6px solid var(--oro);
+  border-top: 90px solid var(--oro);
+  border-radius: 50% 50% 16px 16px / 40% 40% 10px 10px;
+  background: var(--piedra-clara);
+  position: relative;
+}
+.puertas-arco h1 { margin: 0 0 6px; color: var(--oro-claro); font-size: 28px; letter-spacing: .05em; }
+.puertas-arco .qr-medallon {
+  width: 220px; height: 220px; margin: 14px auto; background: #fff; border-radius: 10px;
+  border: 6px solid var(--oro); display: grid; place-items: center; overflow: hidden;
+}
+.puertas-arco .qr-medallon img { width: 100%; height: 100%; object-fit: contain; }
+.puertas-arco .qr-url { color: #241a16; font-weight: 700; font-size: 13px; padding: 10px; word-break: break-all; }
+.puertas-arco .contador { font-size: 20px; color: var(--marmol); margin-top: 8px; }
+.puertas-arco .contador b { color: var(--oro-claro); font-size: 28px; }
+
+.laurel-wreath { position: relative; width: 320px; height: 320px; }
+.laurel-wreath .hoja {
+  position: absolute; top: 50%; left: 50%; width: 28px; height: 12px;
+  background: linear-gradient(90deg, #4c7a2f, var(--oro));
+  border-radius: 50% 10px 50% 10px;
+  transform-origin: 0 50%;
+}
+.numero-romano {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 96px; font-weight: 800; color: var(--oro-claro);
+  text-shadow: 0 0 24px rgba(212, 175, 55, .8);
+}
+
+.banner-imperial {
+  padding: 30px 60px;
+  background: linear-gradient(180deg, var(--purpura-clara), var(--purpura));
+  border: 4px solid var(--oro);
+  border-radius: 16px;
+  box-shadow: 0 0 60px rgba(212, 175, 55, .5);
+}
+.banner-imperial h1 { margin: 0; font-size: 56px; letter-spacing: .06em; color: var(--oro-claro); text-transform: uppercase; }
+.banner-imperial p { margin: 10px 0 0; font-size: 20px; color: var(--marmol); }
+
+.gladiador-card {
+  background: var(--piedra-clara); border: 4px solid var(--oro); border-radius: 16px;
+  padding: 26px 50px; min-width: 360px;
+}
+.gladiador-card .corona { font-size: 42px; }
+.gladiador-card h1 { margin: 10px 0 0; font-size: 34px; color: var(--oro-claro); }
+.gladiador-card .marcador-resultado { display: flex; justify-content: center; gap: 30px; margin-top: 14px; font-size: 22px; font-weight: 800; }
+.gladiador-card .destacado { margin-top: 10px; color: var(--marmol); font-size: 15px; }
+
+.podio-romano { display: flex; align-items: flex-end; gap: 18px; }
+.podio-romano .pedestal {
+  width: 150px; background: linear-gradient(180deg, var(--marmol), var(--marmol-oscuro));
+  border: 3px solid var(--oro); border-radius: 10px 10px 0 0; color: #241a16; padding: 10px 6px 14px;
+  text-align: center;
+}
+.podio-romano .p1 { height: 220px; order: 2; }
+.podio-romano .p2 { height: 160px; order: 1; }
+.podio-romano .p3 { height: 120px; order: 3; }
+.podio-romano .pedestal .numero { font-size: 30px; font-weight: 900; color: var(--terracota); }
+.podio-romano .pedestal .alias { font-weight: 700; margin-top: 6px; }
+.podio-romano .pedestal .puntos { font-size: 12px; color: #6b5d4a; }
+.ceremonia-resumen { margin-top: 24px; color: var(--marmol); font-size: 15px; display: flex; gap: 24px; justify-content: center; }
+.ceremonia-resumen b { color: var(--oro-claro); }

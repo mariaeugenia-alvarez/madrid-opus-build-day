@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La sala es el código — Coliseo</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<div id="coliseo">
+  <header id="cabecera">
+    <div class="placa fase-info">
+      <span id="fase-nombre">—</span>
+      <span id="fase-ronda"></span>
+    </div>
+    <div id="marcador" class="marcador-marmol">
+      <div class="equipo equipo-azul"><span class="escudo"></span><span id="pAzul">0</span></div>
+      <div class="vs">VS</div>
+      <div class="reloj" id="reloj">—</div>
+      <div class="equipo equipo-naranja"><span id="pNaranja">0</span><span class="escudo"></span></div>
+    </div>
+    <div class="placa ciudadanos">
+      <span id="conectados">0</span> cives <span class="mute">· <span id="bots">0</span> bots</span>
+    </div>
+  </header>
+
+  <main id="arena-wrap">
+    <div class="graderio graderio-top"></div>
+    <canvas id="arena"></canvas>
+    <div class="graderio graderio-bottom"></div>
+  </main>
+
+  <aside id="palco">
+    <h2>Palco del César</h2>
+    <div class="cesar-silueta" aria-hidden="true"></div>
+    <section class="control">
+      <button data-a="iniciar">Iniciar</button>
+      <button data-a="pausar">Pausa</button>
+      <button data-a="saltar">Saltar fase</button>
+      <button data-a="final">Final</button>
+      <button data-a="reiniciar">Reiniciar</button>
+    </section>
+    <section>
+      <h3>Gladiadores</h3>
+      <ol id="top10"></ol>
+    </section>
+    <section>
+      <h3>Edictos del pueblo</h3>
+      <ul id="edictos"></ul>
+    </section>
+    <section>
+      <h3>Pregón</h3>
+      <div id="pregon"></div>
+    </section>
+  </aside>
+</div>
+
+<!-- LOBBY -->
+<div id="overlay-puertas" class="overlay oculto">
+  <div class="puertas-arco">
+    <h1>Las Puertas de la Arena</h1>
+    <div class="qr-medallon">
+      <img id="qr-img" src="/qr.svg" alt="QR de acceso"
+           onerror="this.style.display='none'; document.getElementById('qr-fallback').style.display='block';">
+      <div id="qr-fallback" class="qr-url" style="display:none"></div>
+    </div>
+    <div class="contador"><b id="lobby-conectados">0</b> ciudadanos esperan entrar</div>
+  </div>
+</div>
+
+<!-- COUNTDOWN -->
+<div id="overlay-countdown" class="overlay oculto">
+  <div class="laurel-wreath" id="laurel"></div>
+  <div class="numero-romano" id="numero-cuenta"></div>
+</div>
+
+<!-- ANUNCIO -->
+<div id="overlay-anuncio" class="overlay oculto">
+  <div class="banner-imperial">
+    <h1 id="anuncio-titulo"></h1>
+    <p id="anuncio-texto"></p>
+  </div>
+</div>
+
+<!-- RESULTADOS -->
+<div id="overlay-resultados" class="overlay oculto">
+  <div class="gladiador-card">
+    <div class="corona">🏆</div>
+    <h1 id="res-mvp">—</h1>
+    <div class="marcador-resultado">
+      <span class="equipo-azul" id="res-azul">0</span>
+      <span class="vs">–</span>
+      <span class="equipo-naranja" id="res-naranja">0</span>
+    </div>
+    <div class="destacado" id="res-destacado"></div>
+  </div>
+</div>
+
+<!-- CEREMONIA -->
+<div id="overlay-ceremonia" class="overlay oculto">
+  <div>
+    <div class="podio-romano" id="podio"></div>
+    <div class="ceremonia-resumen" id="ceremonia-resumen"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="/visor.js"></script>
+</body>
+</html>

@@ -15,6 +15,8 @@ Es un **simulador del servidor del juego**. Cumple el contrato de `shared/contra
 | `pages/visor.html` | Visor de depuración en `/sim/visor?key=…`, con controles Espacio, P, R y F. También es la redirección de `/visor`. |
 | `check.js` | `VISOR_KEY=… npm run sim:check -- [url] [segundos]`: un visor y un jugador recorren un match completo. Comprueba que llegan todos los eventos del contrato y que funcionan proponer, aprobar y votar. |
 
+Rutas extra: `GET /qr.svg` (QR de la URL pública, para el visor) y `GET /url` (`{ url }`). La URL sale de `PUBLIC_URL`, o de `infra/.tunnel-url` (se relee en cada petición), o del host de la petición. El servidor real debería ofrecer las mismas rutas.
+
 Si existe `public/`, se sirve antes que estas páginas, así que `public/index.html` y `public/visor.html` sustituyen a las de depuración sin tocar nada.
 
 ## Variables

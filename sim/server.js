@@ -15,6 +15,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import QRCode from 'qrcode';
 import { Server } from 'socket.io';
 import * as C from '../shared/contract.js';
 
@@ -388,6 +389,18 @@ app.get('/health', (_req, res) => res.json({
   visores: io.sockets.adapter.rooms.get('visor')?.size || 0,
 }));
 app.use('/shared', express.static(path.join(__dirname, '..', 'shared')));
+// URL pública para el QR: PUBLIC_URL, o la del túnel (infra/.tunnel-url, se relee en cada petición
+// porque cambia al reiniciar el túnel), o el host de la petición como último recurso.
+const urlPublica = (req) => {
+  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL;
+  try { return fs.readFileSync(path.join(__dirname, '..', 'infra', '.tunnel-url'), 'utf8').trim(); } catch { /* sin túnel */ }
+  return `${req.protocol}://${req.get('host')}`;
+};
+app.get('/url', (req, res) => res.json({ url: urlPublica(req) }));
+app.get('/qr.svg', async (req, res) => {
+  const svg = await QRCode.toString(urlPublica(req), { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
+  res.set('Cache-Control', 'no-store').type('image/svg+xml').send(svg);
+});
 app.use('/sim', express.static(path.join(__dirname, 'pages'), { extensions: ['html'] }));
 if (fs.existsSync(publicDir)) app.use(express.static(publicDir, { extensions: ['html'] }));
 app.get('/', (_req, res) => res.redirect('/sim/jugar'));

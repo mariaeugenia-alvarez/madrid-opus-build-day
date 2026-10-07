@@ -9,6 +9,8 @@ Responsable: Pablo Albaladejo (Persona 6, Infraestructura y QA). Lee antes `CLAU
 | `smoke-server.js` | Servidor de humo (`npm run smoke`): Socket.IO solo WebSocket con un estado falso de `STATE_BYTES` a `TICK_HZ`, y `GET /health`. No es el juego; sirve para medir el túnel y la red. |
 | `tunnel.sh` | `npm run tunnel` (`PORT=3000` por defecto): abre un Cloudflare Quick Tunnel contra `localhost`, escribe la URL en `.tunnel-url` y pinta el QR en la terminal. Necesita `cloudflared` (`brew install cloudflared`). |
 | `loadtest.js` | `npm run loadtest -- [url] [clientes] [segundos]`: N clientes Socket.IO solo WebSocket. Mide conexiones, rechazos (429), latencia p50/p95/p99 y ticks recibidos. Sin URL usa `.tunnel-url`. |
+| `qr.js` | `npm run qr -- [url]`: escribe `qr.png` (1024 px, para proyectar o imprimir) y `qr.svg`, y pinta el QR en la terminal. `tunnel.sh` lo llama solo. |
+| `qr.png`, `qr.svg` | QR de la URL pública actual: se versionan junto con `.tunnel-url`. |
 | `.tunnel-url` | URL pública actual. Está versionado para que el equipo la vea: haz commit cada vez que cambie. |
 
 ## Datos medidos (no los olvides al diseñar)

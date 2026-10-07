@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Expone el servidor local con un Cloudflare Quick Tunnel y pinta el QR.
+# Expone el servidor local con un Cloudflare Quick Tunnel, pinta el QR y regenera infra/qr.png y qr.svg.
 # Uso: npm run tunnel            (puerto 3000)
 #      PORT=4000 npm run tunnel
 # Límite conocido: 200 peticiones en vuelo por túnel (luego responde 429).
@@ -31,6 +31,6 @@ echo "$URL" > "$ROOT/infra/.tunnel-url"
 echo
 echo "  URL pública: $URL"
 echo
-node -e "require('qrcode').toString(process.argv[1], { type: 'terminal', small: true }).then(console.log)" "$URL"
+node "$ROOT/infra/qr.js" "$URL"
 echo "  Ctrl+C para cerrar el túnel."
 wait $PID

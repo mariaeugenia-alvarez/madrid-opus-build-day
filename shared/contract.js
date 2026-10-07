@@ -37,7 +37,8 @@ export const REGLAS_BASE = {
   radioJugador: 12,
   radioOrbe: 6,
   orbesEnArena: 40,
-  embestida: { radio: 36, robo: 3, recargaMs: 2000 },
+  // La embestida es un sprint: sprintMs a velocidad × sprint en la última dirección; roba al primer rival que toque.
+  embestida: { radio: 36, robo: 3, recargaMs: 2000, sprintMs: 300, sprint: 3 },
 };
 
 export const FASES = {
@@ -81,7 +82,7 @@ export const EV = {
   CONTROL: 'control',
 
   // ---------------- servidor → visor ----------------
-  // state     { tick, restanteMs, j: [[id, x, y, equipo, puntos], …], o: [[x, y], …] }  20/s
+  // state     { tick, restanteMs, j: [[id, x, y, equipo, puntos, sprint(0|1)], …], o: [[x, y], …] }  20/s
   STATE: 'state',
   // jugadores [{ id, alias, color, equipo, bot, espectador, conectado }, …]  al cambiar el roster
   JUGADORES: 'jugadores',
@@ -100,6 +101,9 @@ export const EV = {
   //           cerca = { r, j: [[x, y, equipo], …], o: [[x, y], …] }: jugadores (máx. CERCA.maxJugadores)
   //           y orbes a menos de CERCA.radio, solo en RONDA/FINAL. ≈200 B: el móvil ve a sus rivales sin `state`.
   ME: 'me',
+  // clasificacion { jugando, top: [{ id, alias, color, equipo, puntos }, …8] }  1/s a todos (también antes
+  //           de entrar): lista de jugadores en el móvil y en la portada. ≈400 B.
+  CLASIFICACION: 'clasificacion',
 
   // ---------------- servidor → todos ----------------
   // fase      { fase, ronda, rondas, duracionMs, restanteMs, finEn, pausado, datos }

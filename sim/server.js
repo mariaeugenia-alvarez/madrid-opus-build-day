@@ -177,8 +177,11 @@ function paso(dt) {
     const { dx, dy } = j.input;
     const mag = Math.hypot(dx, dy);
     const k = mag > 1 ? 1 / mag : 1;
-    j.x = clamp(j.x + dx * k * R.velocidad * dt, R.radioJugador, ARENA.ancho - R.radioJugador);
-    j.y = clamp(j.y + dy * k * R.velocidad * dt, R.radioJugador, ARENA.alto - R.radioJugador);
+    if (mag > .15) j.dir = { x: dx / mag, y: dy / mag }; // última dirección, para el sprint de la embestida
+    let vx = dx * k * R.velocidad; let vy = dy * k * R.velocidad;
+    if (j.dash) { vx = j.dash.x * R.velocidad * R.embestida.sprint; vy = j.dash.y * R.velocidad * R.embestida.sprint; }
+    j.x = clamp(j.x + vx * dt, R.radioJugador, ARENA.ancho - R.radioJugador);
+    j.y = clamp(j.y + vy * dt, R.radioJugador, ARENA.alto - R.radioJugador);
   }
   const rr = (R.radioJugador + R.radioOrbe) ** 2;
   for (const j of lista) {
@@ -194,12 +197,20 @@ function paso(dt) {
   }
   reponerOrbes();
   const t = now();
+  // Embestida = sprint corto en la última dirección; roba al primer rival que toque durante el sprint.
   for (const j of lista) {
-    if (!j.input.accion) continue;
-    j.input.accion = 0;
-    if (t < j.recargaHasta) continue;
-    j.recargaHasta = t + R.embestida.recargaMs;
+    if (j.input.accion) {
+      j.input.accion = 0;
+      if (t >= j.recargaHasta) {
+        j.recargaHasta = t + R.embestida.recargaMs;
+        const d = j.dir || { x: j.equipo === 0 ? 1 : -1, y: 0 };
+        j.dash = { x: d.x, y: d.y, hasta: t + R.embestida.sprintMs };
+      }
+    }
+    if (!j.dash) continue;
     const v = rivalCercano(j, R.embestida.radio);
+    if (!v && t < j.dash.hasta) continue;
+    j.dash = null;
     grabar('accion', { playerId: j.id, acierto: Boolean(v) });
     if (!v) continue;
     const robo = Math.min(R.embestida.robo, v.puntos);
@@ -563,7 +574,7 @@ setInterval(seguro('tick', () => {
     io.to('visor').volatile.emit(EV.STATE, {
       tick,
       restanteMs: restante(),
-      j: activos().map((j) => [j.id, Math.round(j.x), Math.round(j.y), j.equipo, j.puntos]),
+      j: activos().map((j) => [j.id, Math.round(j.x), Math.round(j.y), j.equipo, j.puntos, j.dash ? 1 : 0]),
       o: JUEGO.has(fase) ? orbes.map((o) => [Math.round(o.x), Math.round(o.y)]) : [],
     });
   }
@@ -613,6 +624,12 @@ setInterval(seguro('stats', () => {
   const [azul, naranja] = puntosEquipos();
   const miembros = [0, 0];
   for (const j of lista) miembros[j.equipo] += 1;
+  const enJuegoCl = JUEGO.has(fase);
+  const ordenCl = [...jugadores.values()].sort((a, b) => (enJuegoCl ? b.puntos - a.puntos : b.total - a.total)).slice(0, 8);
+  io.emit(EV.CLASIFICACION, {
+    jugando: jugadores.size,
+    top: ordenCl.map((j) => ({ id: j.id, alias: j.alias, color: j.color, equipo: EQUIPOS[j.equipo], puntos: enJuegoCl ? j.puntos : j.total })),
+  });
   io.to('visor').emit(EV.STATS, {
     fase, ronda,
     conectados: reales().length,

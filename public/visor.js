@@ -89,7 +89,10 @@ socket.on(EV.FASE, (f) => {
 });
 
 function ocultarTodosLosOverlays() {
-  for (const id of ['overlay-puertas', 'overlay-countdown', 'overlay-resultados', 'overlay-ceremonia']) ocultar(id);
+  // overlay-anuncio incluido: un banner (FIRST BLOOD...) que siga visible al cambiar de fase
+  // se sumaría al fondo oscuro del nuevo overlay y lo dejaría ilegible.
+  for (const id of ['overlay-puertas', 'overlay-countdown', 'overlay-resultados', 'overlay-ceremonia', 'overlay-anuncio']) ocultar(id);
+  clearTimeout(window.__an);
 }
 function mostrarSolo(id) { $(id).classList.remove('oculto'); }
 function ocultar(id) { $(id).classList.add('oculto'); }

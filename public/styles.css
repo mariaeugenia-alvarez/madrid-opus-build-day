@@ -160,15 +160,19 @@ body {
 
 #pregon div { font-size: 12px; color: var(--mute); padding: 2px 0; border-bottom: 1px dashed rgba(212, 175, 55, .15); }
 
-/* -------- overlays de pantalla completa -------- */
+/* -------- overlays de pantalla completa --------
+   Cubren la arena y la cabecera, pero NUNCA el palco: el César debe poder
+   pulsar Iniciar/Pausa/Saltar/Aprobar incluso en pleno LOBBY o CEREMONIA. */
 .overlay {
-  position: fixed; inset: 0;
+  position: fixed; top: 0; left: 0; right: 320px; bottom: 0;
   display: grid; place-items: center;
   background: rgba(18, 10, 8, .88);
   text-align: center;
   z-index: 50;
+  pointer-events: none;
 }
 .overlay.oculto { display: none; }
+@media (max-width: 900px) { .overlay { right: 0; } }
 
 .puertas-arco {
   width: min(70vw, 560px);

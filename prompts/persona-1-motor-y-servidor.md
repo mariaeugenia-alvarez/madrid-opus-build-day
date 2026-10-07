@@ -1,4 +1,8 @@
-## Persona 1 — Motor y servidor
+# Persona 1 — Motor y servidor
+
+**Responsable:** adevex-drone
+
+**Estado:** borrador
 
 Eres la base del proyecto: el resto depende de que tu contrato de comunicación esté listo cuanto antes y de que el servidor no se caiga en directo.
 
@@ -7,9 +11,9 @@ Eres la base del proyecto: el resto depende de que tu contrato de comunicación 
 - [x] ¿Quién manda sobre el estado del juego y cómo se evitan las trampas?
   Un motor de juego con reglas duras gestionado por el servidor. El móvil solo envía lo que hace el jugador; las posiciones y los puntos los calcula siempre el servidor.
 - [x] ¿A qué frecuencia se actualiza el juego y cuántos jugadores debe soportar?
-  Hasta 60 jugadores. El móvil se actualiza entre 20 y 30 veces por segundo, y el visor más (unas 60) para que sea espectacular.
+  Hasta 150 jugadores (ajustado por coordinación: diseñar con margen a 200). El móvil se actualiza entre 20 y 30 veces por segundo, y el visor más (unas 60) para que sea espectacular.
 - [x] ¿Qué fases tiene el match, qué las hace avanzar y quién las controla?
-  Ninguna, para simplificar, siempre que el resultado sea espectacular. El juego está siempre en marcha; el presentador puede pausar, abrir votaciones, reiniciar los puntos y mostrar el podio.
+  Siete fases (ajustado por coordinación, ver prompts/README.md): LOBBY → COUNTDOWN → RONDA → RESULTADOS → PARCHE → FINAL → CEREMONIA. El presentador controla con acciones (`iniciar`, `pausar`, `saltar`, `final`, `desempatar`, etc.).
 - [x] ¿Cómo se distingue un jugador del visor del presentador y cómo se protege el visor?
   El visor es la pantalla grande y se abre en local, en el portátil donde corre el servidor (el de la persona de infraestructura). Se protege con una clave secreta, para que funcione igual llegue el público por túnel, por un router propio o por la nube. El presentador ve el estado de todos los jugadores, el ranking general y el mapa con todos moviéndose en tiempo real, con zoom.
 - [x] ¿Cómo funcionan las propuestas y los votos (límites, moderación, un voto por persona)?

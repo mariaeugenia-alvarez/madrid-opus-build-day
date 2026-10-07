@@ -2,6 +2,8 @@
 
 Responsable: andrsbayona
 
+**Estado:** borrador
+
 ## Punto de partida
 
 - **Tema: Coliseo Romano.** El visor es la pantalla grande proyectada y el mando del presentador, que se presenta como «El César» viendo la batalla desde su butaca (el «Palco del César»).

@@ -4,6 +4,8 @@ Juego multijugador web en el que juega toda la sala desde el móvil. Lo usamos e
 
 **Este proyecto se usa en directo, delante de 100–150 personas conectadas.** Un servidor caído es peor que una regla mal hecha. Ante la duda, prioriza la estabilidad.
 
+**Decisiones de coordinación:** lee [prompts/README.md](prompts/README.md) son la fuente única y mandan sobre los prompts individuales.
+
 ## Equipo
 
 | # | Persona | Tarea | Responsable de |
@@ -79,6 +81,7 @@ export default {
   onTick(state, dt) {},          // cada tick; dt en segundos
   onCollision(a, b, state) {},   // embestida de a sobre b
   onOrb(player, orb, state) {},  // player recoge orb
+  descripcion: 'Invierte la gravedad',  // una frase para las notas del parche (opcional)
   render: { fondo: '#120024' }   // pistas visuales para los clientes (opcional)
 };
 ```
@@ -94,7 +97,7 @@ Cuando el público vote una regla:
 1. **Crea un archivo nuevo** en `game/rules/<id>.js`. No modifiques `server.js`, `state.js`, `public/` ni otras reglas salvo que sea imprescindible. Si lo es, explica por qué antes de hacerlo.
 2. **Máximo 80 líneas.** Si la idea no cabe, implementa la versión más divertida que sí quepa.
 3. **Jugable en 90 s y visible en el visor.** El efecto tiene que notarse en la ronda siguiente. Si no se ve, anúncialo con `state.anunciar`.
-4. **Versión:** la mayor versión que haya en `game/rules/`, más 0.1.
+4. **Versión:** la asigna el servidor (viene en `pendiente.json` o en el prompt). No la calcules tú.
 5. **Comprueba** que el módulo se importa sin errores: `node -e "import('./game/rules/<id>.js')"`.
 6. **Commit** con el mensaje `parche v0.X: <nombre de la regla>`.
 7. **Resume en dos frases** qué has hecho. Lo va a leer en voz alta el presentador.

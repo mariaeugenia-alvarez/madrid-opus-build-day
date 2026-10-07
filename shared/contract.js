@@ -28,6 +28,8 @@ export const STATS_HZ = 1; // `stats` al visor
 export const ARENA = { ancho: 1000, alto: 600 }; // coordenadas enteras, origen arriba-izquierda
 export const EQUIPOS = ['azul', 'naranja']; // en mensajes compactos: 0 = azul, 1 = naranja
 export const LIMITES = { alias: 12, propuesta: 80 };
+// Vecindario que recibe cada móvil en `me.cerca` para ver a sus rivales sin enviarle el estado completo.
+export const CERCA = { radio: 260, maxJugadores: 14, maxOrbes: 12 };
 export const HEATMAP = { ancho: 20, alto: 12, cadaMs: 500 }; // celdas de 50×50 px
 
 export const REGLAS_BASE = {
@@ -89,11 +91,14 @@ export const EV = {
   //           al cambiar — es la cola de moderación
   PROPUESTAS: 'propuestas',
   // evento    { tipo: 'embestida'|'racha'|'entra'|'sale', texto, t }  para el ticker inferior
+  //           embestida añade { x, y, atacanteId, victimaId, equipo } para pintar el impacto
   EVENTO: 'evento',
 
   // ---------------- servidor → jugador ----------------
   // me        { id, equipo, espectador, x, y, puntos, total, posicion, de, recargaMs, voto }  10/s
   //           posicion = puesto por puntos totales del evento entre `de` jugadores
+  //           cerca = { r, j: [[x, y, equipo], …], o: [[x, y], …] }: jugadores (máx. CERCA.maxJugadores)
+  //           y orbes a menos de CERCA.radio, solo en RONDA/FINAL. ≈200 B: el móvil ve a sus rivales sin `state`.
   ME: 'me',
 
   // ---------------- servidor → todos ----------------

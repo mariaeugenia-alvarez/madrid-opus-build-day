@@ -18,6 +18,7 @@ import express from 'express';
 import QRCode from 'qrcode';
 import { Server } from 'socket.io';
 import * as C from '../shared/contract.js';
+import { pensarBot } from './bots.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -81,6 +82,7 @@ const evento = { embestidas: 0, propuestas: 0, votos: 0 };
 let rondaSt = nuevaRonda();
 let lider = null;
 let margenMax = 0;
+let ultimaRemontada = 0;
 let votacionSucia = false;
 let rosterSucio = false;
 
@@ -134,7 +136,7 @@ function rivalCercano(j, radio) {
 
 // ------------------------------------------------------------------ emisiones
 const anuncio = (titulo, texto = '') => io.emit(EV.ANUNCIO, { titulo, texto });
-const ticker = (tipo, texto) => io.to('visor').emit(EV.EVENTO, { tipo, texto, t: now() });
+const ticker = (tipo, texto, extra = {}) => io.to('visor').emit(EV.EVENTO, { tipo, texto, t: now(), ...extra });
 const restante = () => (pausado ? pausaRestante : Math.max(0, faseHasta - now()));
 const payloadFase = () => ({ ...ultimaFase, restanteMs: restante(), finEn: pausado ? null : faseHasta, pausado });
 const emitirFase = () => io.emit(EV.FASE, payloadFase());
@@ -145,20 +147,6 @@ const listaPropuestas = () => propuestas.map(({ id, texto, autor, estado, votos 
 const candidatas = () => propuestas.filter((p) => p.estado === 'aprobada').map(({ id, texto, votos }) => ({ id, texto, votos }));
 
 // ------------------------------------------------------------------ juego
-function pensarBot(j) {
-  const t = now();
-  if (t > j.cambioObjetivo || !j.objetivo || (j.objetivo.orbe && !orbes.includes(j.objetivo))) {
-    j.objetivo = Math.random() < 0.7 && orbes.length ? pick(orbes) : { x: rnd(0, ARENA.ancho), y: rnd(0, ARENA.alto) };
-    if (orbes.includes(j.objetivo)) j.objetivo.orbe = true;
-    j.cambioObjetivo = t + rnd(800, 2500);
-  }
-  const dx = j.objetivo.x - j.x;
-  const dy = j.objetivo.y - j.y;
-  const d = Math.hypot(dx, dy) || 1;
-  j.input.dx = dx / d;
-  j.input.dy = dy / d;
-  j.input.accion = t >= j.recargaHasta && Math.random() < 0.08 && rivalCercano(j, R.embestida.radio) ? 1 : 0;
-}
 
 function sumar(j, n) { j.puntos += n; j.total += n; }
 
@@ -171,15 +159,21 @@ function comprobarRemontada() {
   const [a, b] = puntosEquipos();
   const diff = a - b;
   const nuevo = diff > 0 ? 0 : diff < 0 ? 1 : lider;
-  if (lider !== null && nuevo !== lider && margenMax >= 10) anuncio('REMONTADA', `Equipo ${EQUIPOS[nuevo]}`);
+  // Remontada de verdad: el líder perdido llegó a ir ganando por mucho, y como mucho una cada 25 s.
+  const umbral = Math.max(10, Math.round((a + b) * 0.12));
+  if (lider !== null && nuevo !== lider && margenMax >= umbral && now() - ultimaRemontada > 25000) {
+    ultimaRemontada = now();
+    anuncio('REMONTADA', `Equipo ${EQUIPOS[nuevo]}`);
+  }
   if (nuevo !== lider) { lider = nuevo; margenMax = 0; }
   margenMax = Math.max(margenMax, Math.abs(diff));
 }
 
 function paso(dt) {
   const lista = activos();
+  const ctxIA = { t: now(), orbes, activos: lista, ARENA, R };
   for (const j of lista) {
-    if (j.bot) pensarBot(j);
+    if (j.bot) pensarBot(j, ctxIA);
     const { dx, dy } = j.input;
     const mag = Math.hypot(dx, dy);
     const k = mag > 1 ? 1 / mag : 1;
@@ -216,7 +210,8 @@ function paso(dt) {
     grabar('ram', { atacanteId: j.id, victimaId: v.id, robado: robo, x: Math.round(v.x), y: Math.round(v.y) });
     rondaSt.embestidas += 1;
     evento.embestidas += 1;
-    ticker('embestida', `${j.alias} embiste a ${v.alias} (+${robo})`);
+    ticker('embestida', `${j.alias} embiste a ${v.alias} (+${robo})`,
+      { x: Math.round(v.x), y: Math.round(v.y), atacanteId: j.id, victimaId: v.id, equipo: EQUIPOS[j.equipo] });
     if (!rondaSt.firstBlood) { rondaSt.firstBlood = true; anuncio('FIRST BLOOD', j.alias); }
   }
   comprobarRemontada();
@@ -402,6 +397,12 @@ app.get('/qr.svg', async (req, res) => {
   res.set('Cache-Control', 'no-store').type('image/svg+xml').send(svg);
 });
 app.use('/sim', express.static(path.join(__dirname, 'pages'), { extensions: ['html'] }));
+// UI=sim: las páginas del simulador (/sim/*) mandan en /, /visor y /control aunque exista public/.
+if (process.env.UI === 'sim') {
+  app.get('/', (_req, res) => res.redirect('/sim/jugar'));
+  app.get('/visor', (req, res) => res.redirect(`/sim/visor${req.url.slice('/visor'.length)}`));
+}
+app.get('/control', (req, res) => res.redirect(`/sim/control${req.url.slice('/control'.length)}`));
 if (fs.existsSync(publicDir)) app.use(express.static(publicDir, { extensions: ['html'] }));
 app.get('/', (_req, res) => res.redirect('/sim/jugar'));
 app.get('/visor', (req, res) => res.redirect(`/sim/visor${req.url.slice('/visor'.length)}`));
@@ -571,12 +572,24 @@ setInterval(seguro('tick', () => {
 setInterval(seguro('me', () => {
   const orden = [...jugadores.values()].sort((a, b) => b.total - a.total);
   const t = now();
+  const enJuego = JUEGO.has(fase);
+  const lista = enJuego ? activos() : [];
+  const R2 = C.CERCA.radio ** 2;
   orden.forEach((j, i) => {
     if (j.bot || !j.conectado) return;
+    // Lo que el móvil necesita para ver a sus rivales: jugadores y orbes cercanos (≈200 B).
+    const cerca = { r: C.CERCA.radio, j: [], o: [] };
+    if (enJuego) {
+      const vecinos = [];
+      for (const o of lista) { if (o === j) continue; const d = d2(o, j); if (d <= R2) vecinos.push([d, o]); }
+      vecinos.sort((a, b) => a[0] - b[0]);
+      cerca.j = vecinos.slice(0, C.CERCA.maxJugadores).map(([, o]) => [Math.round(o.x), Math.round(o.y), o.equipo]);
+      for (const o of orbes) if (d2(o, j) <= R2 && cerca.o.length < C.CERCA.maxOrbes) cerca.o.push([Math.round(o.x), Math.round(o.y)]);
+    }
     io.to(j.socketId).volatile.emit(EV.ME, {
       id: j.id, equipo: EQUIPOS[j.equipo], espectador: j.espectador,
       x: Math.round(j.x), y: Math.round(j.y), puntos: j.puntos, total: j.total,
-      posicion: i + 1, de: orden.length, recargaMs: Math.max(0, j.recargaHasta - t), voto: j.voto,
+      posicion: i + 1, de: orden.length, recargaMs: Math.max(0, j.recargaHasta - t), voto: j.voto, cerca,
     });
   });
 }), 1000 / C.ME_HZ);

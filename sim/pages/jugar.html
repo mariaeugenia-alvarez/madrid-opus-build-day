@@ -2,146 +2,370 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Jugar (simulador)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#04050b">
+<title>La sala es el código · Jugar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0b0d12; --panel:#141824; --fg:#e8eaf0; --mute:#8b93a7; }
-  * { box-sizing:border-box; -webkit-user-select:none; user-select:none; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui, sans-serif; height:100dvh;
-         display:flex; flex-direction:column; touch-action:none; }
-  .pad { padding:16px; }
-  input, button { font:inherit; border-radius:10px; border:0; padding:12px; }
-  input[type=text] { width:100%; background:var(--panel); color:var(--fg); margin-bottom:10px; }
-  button { background:#3b82f6; color:#fff; font-weight:700; width:100%; }
-  #juego { display:none; flex:1; flex-direction:column; }
-  #hud { display:flex; justify-content:space-between; padding:12px 16px; background:var(--panel); }
-  #zona { flex:1; display:grid; grid-template-columns: 1fr 1fr; align-items:center; }
-  #stick { width:160px; height:160px; border-radius:50%; background:#1b2030; margin:auto; position:relative; }
-  #bola { width:64px; height:64px; border-radius:50%; background:#3b4566; position:absolute; left:48px; top:48px; }
-  #accion { width:140px; height:140px; border-radius:50%; margin:auto; display:block; background:#ef4444; font-size:18px; }
-  #accion[disabled] { background:#3a2a2a; }
-  #parche { display:none; padding:12px 16px; background:var(--panel); }
-  #parche button { margin:4px 0; background:#232a3b; text-align:left; font-weight:400; }
-  #anuncio { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.7);
-             font-size:40px; font-weight:800; text-align:center; pointer-events:none; }
-  small { color:var(--mute); }
+  :root { --eq: #6366f1; --eq-2: #a5b4fc; --bg: #04050b; --fg: #f8fafc; --mute: #94a3b8; --oro: #facc15;
+          --display: 'Russo One', 'Arial Black', system-ui, sans-serif; --ui: 'Rajdhani', system-ui, sans-serif; }
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--ui); overflow: hidden;
+               overscroll-behavior: none; touch-action: none; }
+  body { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--eq) 55%, transparent), transparent 60%), var(--bg);
+         transition: background .6s; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .pantalla { position: fixed; inset: 0; display: flex; flex-direction: column; padding: calc(16px + env(safe-area-inset-top)) 18px calc(16px + env(safe-area-inset-bottom)); }
+  .oculto { display: none !important; }
+  .centro { justify-content: center; align-items: center; text-align: center; gap: 14px; }
+  h1 { margin: 0; font-family: var(--display); font-size: 40px; line-height: .95; background: linear-gradient(180deg, #fff, #a5b4fc);
+       -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--mute); letter-spacing: .25em; text-transform: uppercase; font-weight: 700; font-size: 14px; }
+  .grande { font-family: var(--display); font-size: 64px; line-height: 1; }
+  input[type=text] { width: 100%; font: 700 24px var(--ui); color: var(--fg); background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.12);
+                     border-radius: 14px; padding: 14px 16px; text-align: center; -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+  input[type=text]:focus { outline: none; border-color: var(--oro); }
+  .colores { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; width: 100%; }
+  .colores button { aspect-ratio: 1; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
+  .colores button.sel { border-color: #fff; box-shadow: 0 0 18px currentColor; transform: scale(1.08); }
+  .boton { width: 100%; font: 400 24px var(--display); letter-spacing: .06em; color: #111; background: linear-gradient(180deg, #fde047, #f59e0b);
+           border: 0; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(245,158,11,.4); touch-action: manipulation; }
+  .boton:active { transform: scale(.97); }
+  .error { color: #fca5a5; min-height: 22px; font-weight: 700; }
+
+  /* HUD de juego */
+  #hud { display: flex; justify-content: space-between; align-items: flex-start; }
+  .caja { background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 8px 14px; backdrop-filter: blur(8px); }
+  #puntos { font-family: var(--display); font-size: 44px; line-height: 1; display: inline-block; }
+  #puntos.pop { animation: pop .4s ease; }
+  #pos { font-family: var(--display); font-size: 22px; } #pos small { font-family: var(--ui); color: var(--mute); font-size: 15px; }
+  #flecha { font-size: 14px; margin-left: 4px; }
+  #reloj { font-family: var(--display); font-size: 30px; text-align: right; } #reloj.urgente { color: #f87171; animation: latido .5s infinite alternate; }
+  #equipoTxt { text-align: right; font-weight: 700; letter-spacing: .2em; color: var(--eq-2); font-size: 13px; }
+  #vista { position: relative; margin-top: 10px; height: 34vh; min-height: 200px; border-radius: 16px; overflow: hidden;
+           border: 1px solid rgba(255,255,255,.14); background: radial-gradient(circle, rgba(15,20,45,.9), rgba(4,5,11,.95)); }
+  #radar { width: 100%; height: 100%; display: block; }
+  #leyenda { position: absolute; left: 10px; bottom: 6px; display: flex; gap: 10px; font-size: 12px; font-weight: 700; }
+  .l-eq { color: var(--eq-2); } .l-ri { color: var(--rival, #fdba74); }
+  #mini { position: absolute; right: 8px; top: 8px; width: 78px; aspect-ratio: 5 / 3; border-radius: 6px; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.5); }
+  #mini i { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--eq); box-shadow: 0 0 0 3px #fff, 0 0 18px var(--eq); transition: left .1s linear, top .1s linear; }
+  #objetivo { margin-top: 8px; font-size: 15px !important; text-align: center; font-size: 17px; font-weight: 600; background: rgba(0,0,0,.3); border-radius: 12px; padding: 8px 12px; }
+  #teclado { display: none; position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: var(--mute); font-weight: 700; letter-spacing: .1em; }
+  @media (hover: hover) and (pointer: fine) { #teclado { display: block; } #ayuda { display: none; } }
+  #reglas { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  #reglas span { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(250,204,21,.15); color: var(--oro); }
+  #mandos { position: absolute; inset: auto 0 0 0; height: 36%; }
+  #accion.listo b { animation: listo .45s infinite alternate; box-shadow: 0 0 50px #ef4444, 0 0 0 4px #fff; }
+  @keyframes listo { to { transform: scale(1.08); } }
+  #zonaStick { position: absolute; left: 0; top: 0; bottom: 0; width: 58%; }
+  #base { position: absolute; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; background: rgba(255,255,255,.06);
+          border: 2px solid rgba(255,255,255,.15); left: 30%; top: 55%; transition: opacity .2s; }
+  #pomo { position: absolute; left: 50%; top: 50%; width: 66px; height: 66px; margin: -33px 0 0 -33px; border-radius: 50%;
+          background: radial-gradient(circle at 35% 30%, #fff, var(--eq) 60%); box-shadow: 0 0 24px var(--eq); }
+  #ayuda { position: absolute; left: 6%; bottom: 10px; font-size: 13px; color: var(--mute); letter-spacing: .12em; }
+  #accion { position: absolute; right: 22px; bottom: calc(40px + env(safe-area-inset-bottom)); width: 132px; height: 132px; border-radius: 50%; border: 0;
+            background: conic-gradient(#ef4444 var(--carga, 360deg), rgba(255,255,255,.08) 0); padding: 8px; touch-action: none; }
+  #accion b { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; font: 400 18px var(--display); color: #fff;
+              background: radial-gradient(circle at 35% 30%, #fca5a5, #dc2626 65%); box-shadow: 0 0 30px rgba(239,68,68,.6); }
+  #accion.recarga b { background: #3f1d1d; box-shadow: none; color: #fca5a5; }
+  #accion:active b { transform: scale(.93); }
+
+  /* Parche */
+  .cand { position: relative; overflow: hidden; width: 100%; text-align: left; font: 700 20px var(--ui); color: var(--fg); background: rgba(255,255,255,.07);
+          border: 2px solid rgba(255,255,255,.1); border-radius: 14px; padding: 14px 16px; margin: 6px 0; display: flex; justify-content: space-between; gap: 10px; touch-action: manipulation; }
+  .cand i { position: absolute; inset: 0; width: 0; background: rgba(250,204,21,.18); transition: width .5s; z-index: -1; }
+  .cand.mia { border-color: var(--oro); box-shadow: 0 0 20px rgba(250,204,21,.35); }
+  .cand span { font-family: var(--display); }
+  #proponer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+  #contador { text-align: right; color: var(--mute); font-size: 13px; }
+
+  /* Avisos */
+  #aviso { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; text-align: center; pointer-events: none;
+           background: radial-gradient(circle, color-mix(in srgb, var(--eq) 45%, transparent), rgba(0,0,0,.85)); }
+  #aviso b { font-family: var(--display); font-size: 52px; line-height: .95; display: block; animation: golpe 1.6s both; padding: 0 16px; }
+  #aviso span { display: block; margin-top: 10px; color: var(--oro); font-weight: 700; letter-spacing: .15em; font-size: 18px; padding: 0 20px; }
+  #red { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 60; background: #b91c1c; padding: 6px 14px;
+         border-radius: 999px; font-weight: 700; letter-spacing: .1em; font-size: 13px; }
+  @keyframes pop { 50% { transform: scale(1.4); color: var(--oro); } }
+  @keyframes latido { to { opacity: .45; } }
+  @keyframes golpe { 0% { transform: scale(2.5); opacity: 0; } 15% { transform: scale(.95); opacity: 1; } 85% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1); } }
+  @keyframes entra { from { transform: translateY(18px); opacity: 0; } }
+  .pantalla > * { animation: entra .35s ease both; }
 </style>
 </head>
 <body>
-<div id="entrada" class="pad">
-  <h2>La sala es el código</h2>
-  <input id="alias" type="text" maxlength="12" placeholder="Tu alias (máx. 12)">
-  <input id="color" type="color" value="#22c55e">
-  <button id="entrar">Entrar al match</button>
-  <p><small id="msg"></small></p>
-</div>
-<div id="juego">
+<div id="red" class="oculto">RECONECTANDO…</div>
+
+<!-- Entrada -->
+<section id="sEntrada" class="pantalla centro">
+  <div class="sub">Claude Community</div>
+  <h1>LA SALA<br>ES EL CÓDIGO</h1>
+  <p style="color:var(--mute);margin:0 0 6px">Tu móvil es el mando. La arena está en la pantalla grande.</p>
+  <input id="alias" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Tu alias">
+  <div class="colores" id="colores"></div>
+  <button class="boton" id="entrar">ENTRAR A LA ARENA</button>
+  <div class="error" id="errEntrada"></div>
+</section>
+
+<!-- Espera / espectador / cuenta atrás / resultados / ceremonia: pantalla de mensaje -->
+<section id="sMensaje" class="pantalla centro oculto">
+  <div class="sub" id="mSub"></div>
+  <div class="grande" id="mGrande"></div>
+  <div id="mTexto" style="font-size:22px;font-weight:700"></div>
+  <div id="mExtra" style="color:var(--mute);font-size:18px"></div>
+</section>
+
+<!-- Juego -->
+<section id="sJuego" class="pantalla oculto">
   <div id="hud">
-    <div><b id="puntos">0</b> pts · <span id="pos">–</span></div>
-    <div><span id="fase">–</span> <span id="reloj"></span></div>
+    <div class="caja"><div class="sub" style="font-size:11px">PUNTOS</div><span id="puntos">0</span></div>
+    <div class="caja" style="text-align:center"><div class="sub" style="font-size:11px">PUESTO</div><div id="pos">–</div></div>
+    <div class="caja"><div id="reloj">–</div><div id="equipoTxt">–</div></div>
   </div>
-  <div id="parche">
-    <div><b>Vota el próximo parche</b></div>
-    <div id="cands"></div>
-    <input id="prop" type="text" maxlength="80" placeholder="Propón una regla (máx. 80)">
-    <button id="enviar">Enviar propuesta</button>
+  <div id="objetivo">Recoge <b style="color:var(--oro)">orbes amarillos</b> (+1) · Embiste a <b>rivales</b> para robarles 3</div>
+  <div id="vista"><canvas id="radar"></canvas><div id="mini"><i id="yo"></i></div>
+    <div id="leyenda"><span class="l-eq">● tu equipo</span><span class="l-ri">● rivales</span><span style="color:var(--oro)">● orbes</span></div></div>
+  <div id="reglas"></div>
+  <div id="mandos">
+    <div id="zonaStick"><div id="base"><div id="pomo"></div></div><div id="ayuda">ARRASTRA PARA MOVERTE</div></div>
+    <button id="accion" aria-label="Embestir"><b>EMBESTIR</b></button>
+    <div id="teclado">TECLADO: WASD o FLECHAS para moverte · ESPACIO para embestir</div>
   </div>
-  <div id="zona">
-    <div id="stick"><div id="bola"></div></div>
-    <button id="accion">EMBESTIR</button>
+</section>
+
+<!-- Parche -->
+<section id="sParche" class="pantalla oculto">
+  <div class="sub">Parche en directo · <span id="pReloj">–</span></div>
+  <h1 id="pVer" style="font-size:44px;margin:4px 0 10px">v0.1</h1>
+  <div style="font-weight:700;color:var(--mute);margin-bottom:4px">Vota la regla que Claude programará ahora:</div>
+  <div id="cands"></div>
+  <div class="error" id="errVoto"></div>
+  <div id="proponer">
+    <input id="prop" type="text" maxlength="80" placeholder="Propón una regla loca…" autocomplete="off">
+    <div id="contador">0/80</div>
+    <button class="boton" id="enviar" style="padding:14px;font-size:20px">PROPONER</button>
+    <div class="error" id="errProp"></div>
   </div>
-</div>
-<div id="anuncio"></div>
+</section>
+
+<div id="aviso" class="oculto"><div><b id="avTit"></b><span id="avTxt"></span></div></div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script type="module">
-  import * as CONTRATO from '/shared/contract.js';
-  const { EV, FASES } = CONTRATO;
-  const $ = (id) => document.getElementById(id);
-  const socket = io({ transports: ['websocket'] });
-  let dx = 0, dy = 0, accion = 0, finFase = 0, unido = false, miVoto = null;
+import * as C from '/shared/contract.js';
+const { EV, FASES, LIMITES, ARENA, EQUIPOS } = C;
+const $ = (id) => document.getElementById(id);
+const COLORES = ['#22c55e', '#06b6d4', '#a855f7', '#ec4899', '#facc15', '#f8fafc'];
+const EQ = { azul: ['#3b82f6', '#93c5fd'], naranja: ['#f97316', '#fdba74'] };
+const leer = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const vibrar = (p) => { try { navigator.vibrate?.(p); } catch {} };
 
-  const guardado = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
-  const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-  $('alias').value = guardado('alias') || '';
-  // Reconexión: con el token guardado se vuelve al mismo jugador (mismo id y puntos).
-  socket.on('connect', () => {
-    const token = guardado('token');
-    if (!token) return;
-    socket.emit(EV.JOIN, { token }, (r) => { if (r.ok && r.reconectado) entrar(r); });
-  });
-  socket.on('disconnect', () => { $('fase').textContent = 'Reconectando…'; });
-  function entrar(r) {
-    guardar('token', r.token);
-    unido = true; $('entrada').style.display = 'none'; $('juego').style.display = 'flex';
-    $('msg').textContent = `Equipo ${r.equipo}${r.espectador ? ' · espectador hasta la próxima ronda' : ''}`;
-  }
-  $('entrar').onclick = () => {
-    const alias = $('alias').value.trim();
-    socket.emit(EV.JOIN, { alias, color: $('color').value }, (r) => {
-      if (!r.ok) { $('msg').textContent = r.error; return; }
-      guardar('alias', alias);
-      entrar(r);
-    });
-  };
+// ---------- Estado ----------
+const st = { unido: false, equipo: null, fase: null, finLocal: 0, pausado: false, me: null, puntos: 0, posicion: null, dx: 0, dy: 0, accion: 0, color: leer('color') || COLORES[0] };
+const socket = io({ transports: ['websocket'] });
 
-  socket.on(EV.ME, (m) => {
-    $('puntos').textContent = m.puntos;
-    $('pos').textContent = `${m.posicion}º de ${m.de} · ${m.equipo}${m.espectador ? ' · espectador' : ''}`;
-    $('accion').disabled = m.recargaMs > 0;
-    miVoto = m.voto;
+// ---------- Entrada ----------
+const ALIAS = ['Rayo', 'Cometa', 'Ninja', 'Turbo', 'Pixel', 'Neón', 'Lince', 'Bólido', 'Fénix', 'Chispa'];
+$('alias').value = leer('alias') || `${ALIAS[Math.floor(Math.random() * ALIAS.length)]}${Math.floor(Math.random() * 90 + 10)}`;
+$('alias').maxLength = LIMITES.alias;
+$('colores').innerHTML = COLORES.map((c) => `<button style="background:${c};color:${c}" data-c="${c}" aria-label="color ${c}"></button>`).join('');
+const marcarColor = () => document.querySelectorAll('#colores button').forEach((b) => b.classList.toggle('sel', b.dataset.c === st.color));
+$('colores').addEventListener('click', (e) => { const c = e.target.dataset.c; if (c) { st.color = c; marcarColor(); vibrar(10); } });
+marcarColor();
+
+function dentro(r) {
+  guardar('token', r.token); st.unido = true; st.equipo = r.equipo;
+  const [a, b] = EQ[r.equipo] || EQ.azul; document.documentElement.style.setProperty('--eq', a); document.documentElement.style.setProperty('--eq-2', b);
+  document.documentElement.style.setProperty('--rival', (EQ[r.equipo === 'azul' ? 'naranja' : 'azul'])[1]);
+  $('equipoTxt').textContent = `EQUIPO ${r.equipo.toUpperCase()}`;
+  pintarFase();
+}
+$('entrar').addEventListener('click', () => {
+  const alias = $('alias').value.trim();
+  if (!alias) { $('errEntrada').textContent = 'Escribe un alias'; return; }
+  socket.emit(EV.JOIN, { alias, color: st.color }, (r) => {
+    if (!r.ok) { $('errEntrada').textContent = r.error; return; }
+    guardar('alias', alias); guardar('color', st.color); vibrar([20, 40, 20]); dentro(r);
   });
-  socket.on(EV.FASE, (f) => {
-    $('fase').textContent = f.fase; finFase = performance.now() + f.restanteMs;
-    $('parche').style.display = f.fase === FASES.PARCHE ? 'block' : 'none';
-    if (f.fase === FASES.PARCHE) pintarCandidatas(f.datos.candidatas || []);
+});
+// Reconexión: con el token guardado vuelves al mismo jugador, con tus puntos.
+socket.on('connect', () => {
+  $('red').classList.add('oculto');
+  const token = leer('token'); if (!token) return;
+  socket.emit(EV.JOIN, { token }, (r) => { if (r.ok && r.reconectado) dentro(r); });
+});
+socket.on('disconnect', () => $('red').classList.remove('oculto'));
+
+// ---------- Mensajes del servidor ----------
+socket.on(EV.FASE, (f) => {
+  const cambio = f.fase !== st.fase?.fase; st.fase = f; st.pausado = f.pausado; st.finLocal = performance.now() + f.restanteMs;
+  if (cambio && f.fase === FASES.COUNTDOWN) vibrar(60);
+  if (f.fase === FASES.RONDA || f.fase === FASES.FINAL) $('reglas').innerHTML = (f.datos.reglas || []).map((r) => `<span>${esc(r)}</span>`).join('');
+  if (f.fase === FASES.PARCHE) { $('pVer').textContent = `Parche v${f.datos.version}`; pintarCands(f.datos.candidatas || []); }
+  pintarFase();
+});
+socket.on(EV.ME, (m) => {
+  const antes = st.me; st.me = m;
+  if (m.puntos > st.puntos) { const el = $('puntos'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); vibrar(m.puntos - st.puntos >= 3 ? [30, 30, 30] : 12); }
+  if (m.puntos < st.puntos) vibrar(120);
+  st.puntos = m.puntos; $('puntos').textContent = m.puntos;
+  $('pos').innerHTML = `${m.posicion}º<small> de ${m.de}</small><span id="flecha"></span>`;
+  if (antes && antes.posicion !== m.posicion) { $('flecha').textContent = m.posicion < antes.posicion ? '▲' : '▼'; $('flecha').style.color = m.posicion < antes.posicion ? '#4ade80' : '#f87171'; }
+  $('yo').style.left = `${(m.x / ARENA.ancho) * 100}%`; $('yo').style.top = `${(m.y / ARENA.alto) * 100}%`;
+  const carga = m.recargaMs > 0 ? 360 * (1 - m.recargaMs / C.REGLAS_BASE.embestida.recargaMs) : 360;
+  $('accion').style.setProperty('--carga', `${carga}deg`); $('accion').classList.toggle('recarga', m.recargaMs > 0);
+  if (antes?.espectador !== m.espectador) pintarFase();
+  if (st.fase?.fase === FASES.PARCHE) document.querySelectorAll('.cand').forEach((b) => b.classList.toggle('mia', Number(b.dataset.id) === m.voto));
+});
+socket.on(EV.VOTACION, pintarCands);
+socket.on(EV.ANUNCIO, (a) => aviso(a.titulo, a.texto));
+socket.on(EV.PARCHE, (p) => vibrar([40, 60, 40, 60, 120]));
+
+function pintarCands(l) {
+  const total = l.reduce((s, c) => s + c.votos, 0) || 1;
+  $('cands').innerHTML = l.map((c) => `<button class="cand ${st.me?.voto === c.id ? 'mia' : ''}" data-id="${c.id}"><i style="width:${(c.votos / total) * 100}%"></i>${esc(c.texto)}<span>${c.votos}</span></button>`).join('');
+}
+$('cands').addEventListener('click', (e) => {
+  const b = e.target.closest('.cand'); if (!b) return;
+  socket.emit(EV.VOTO, { id: Number(b.dataset.id) }, (r) => { $('errVoto').textContent = r.ok ? '' : r.error; if (r.ok) { vibrar(25); b.classList.add('mia'); } });
+});
+$('prop').addEventListener('input', () => { $('contador').textContent = `${$('prop').value.length}/${LIMITES.propuesta}`; });
+$('enviar').addEventListener('click', () => {
+  socket.emit(EV.PROPUESTA, { texto: $('prop').value }, (r) => {
+    $('errProp').textContent = r.ok ? '¡Enviada! El presentador la revisará.' : r.error; $('errProp').style.color = r.ok ? '#86efac' : '#fca5a5';
+    if (r.ok) { $('prop').value = ''; $('contador').textContent = `0/${LIMITES.propuesta}`; }
   });
-  socket.on(EV.VOTACION, pintarCandidatas);
-  socket.on(EV.ANUNCIO, (a) => {
-    $('anuncio').textContent = a.titulo; $('anuncio').style.display = 'grid';
-    clearTimeout(window._an); window._an = setTimeout(() => { $('anuncio').style.display = 'none'; }, 1500);
-  });
-  function pintarCandidatas(l) {
-    $('cands').innerHTML = '';
-    for (const c of l) {
-      const b = document.createElement('button');
-      b.textContent = `${miVoto === c.id ? '✔ ' : ''}${c.texto} · ${c.votos}`;
-      b.onclick = () => socket.emit(EV.VOTO, { id: c.id }, (r) => { if (!r.ok) $('msg').textContent = r.error; });
-      $('cands').appendChild(b);
+});
+
+let avisoT = null; const avisoVisto = new Map();
+function aviso(t, txt) {
+  const ahora = performance.now(); if (ahora - (avisoVisto.get(t) || -1e9) < 15000) return; avisoVisto.set(t, ahora);
+  $('avTit').textContent = t; $('avTxt').textContent = txt || ''; $('aviso').classList.remove('oculto');
+  const b = $('avTit'); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = '';
+  vibrar([60, 40, 60]); clearTimeout(avisoT); avisoT = setTimeout(() => $('aviso').classList.add('oculto'), 1700);
+}
+
+// ---------- Pantallas por fase ----------
+const PANTALLAS = ['sEntrada', 'sMensaje', 'sJuego', 'sParche'];
+const ver = (id) => PANTALLAS.forEach((p) => $(p).classList.toggle('oculto', p !== id));
+function mensaje(sub, grande, texto, extra = '') { $('mSub').textContent = sub; $('mGrande').textContent = grande; $('mTexto').textContent = texto; $('mExtra').textContent = extra; ver('sMensaje'); }
+function pintarFase() {
+  if (!st.unido) return ver('sEntrada');
+  const f = st.fase; if (!f) return mensaje('', '…', 'Conectando');
+  const eq = (st.equipo || '').toUpperCase(); const d = f.datos || {};
+  switch (f.fase) {
+    case FASES.LOBBY: return mensaje(`Equipo ${eq}`, '¡DENTRO!', 'Mira la pantalla grande', 'La partida empieza en breve');
+    case FASES.COUNTDOWN: return mensaje(d.siguiente === FASES.FINAL ? 'Gran final' : `Ronda ${f.ronda + 1}`, '3', '¡Prepárate!');
+    case FASES.RONDA: case FASES.FINAL:
+      if (st.me?.espectador) return mensaje('Espectador', '👀', 'Entras en la siguiente ronda', 'Mira la pantalla grande');
+      return ver('sJuego');
+    case FASES.RESULTADOS: {
+      const a = d.equipos?.azul ?? 0; const n = d.equipos?.naranja ?? 0; const gana = a === n ? 'EMPATE' : (a > n ? 'AZUL' : 'NARANJA');
+      return mensaje('Fin de la ronda', gana === 'EMPATE' ? 'EMPATE' : `GANA ${gana}`, `Tú: ${st.me?.puntos ?? 0} pts · ${st.me?.posicion ?? '–'}º`, d.mvp ? `MVP: ${d.mvp.alias} (${d.mvp.puntos})` : '');
     }
+    case FASES.PARCHE: return ver('sParche');
+    case FASES.CEREMONIA: {
+      const gan = d.ganador === 'empate' ? 'EMPATE' : `GANA ${(d.ganador || '').toUpperCase()}`;
+      return mensaje('Ceremonia', gan, `Tu puesto final: ${st.me?.posicion ?? '–'}º de ${st.me?.de ?? '–'}`, d.podio?.[0] ? `Campeón: ${d.podio[0].alias}` : '');
+    }
+    default: return mensaje('', f.fase, '');
   }
-  $('enviar').onclick = () => {
-    socket.emit(EV.PROPUESTA, { texto: $('prop').value }, (r) => { if (r.ok) $('prop').value = ''; });
-  };
+}
 
-  // Joystick
-  const stick = $('stick'), bola = $('bola'); let origen = null;
-  stick.addEventListener('pointerdown', (e) => { origen = stick.getBoundingClientRect(); mover(e); stick.setPointerCapture(e.pointerId); });
-  stick.addEventListener('pointermove', (e) => origen && mover(e));
-  stick.addEventListener('pointerup', () => { origen = null; dx = dy = 0; bola.style.transform = ''; });
-  function mover(e) {
-    const cx = origen.left + origen.width / 2, cy = origen.top + origen.height / 2;
-    let x = (e.clientX - cx) / 60, y = (e.clientY - cy) / 60; const m = Math.hypot(x, y);
-    if (m > 1) { x /= m; y /= m; }
-    dx = +x.toFixed(2); dy = +y.toFixed(2); bola.style.transform = `translate(${dx * 48}px, ${dy * 48}px)`;
+// ---------- Cuenta local del reloj ----------
+setInterval(() => {
+  if (!st.fase) return;
+  const s = Math.ceil((st.pausado ? st.fase.restanteMs : Math.max(0, st.finLocal - performance.now())) / 1000);
+  $('reloj').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  $('reloj').classList.toggle('urgente', s <= 10);
+  $('pReloj').textContent = `${s} s`;
+  if (st.fase.fase === FASES.COUNTDOWN && st.unido) $('mGrande').textContent = s > 0 ? s : '¡YA!';
+}, 200);
+
+// ---------- Joystick flotante ----------
+const zona = $('zonaStick'); const base = $('base'); const pomo = $('pomo'); let dedo = null; let cx = 0; let cy = 0;
+zona.addEventListener('pointerdown', (e) => {
+  dedo = e.pointerId; zona.setPointerCapture(dedo); const r = zona.getBoundingClientRect();
+  cx = e.clientX; cy = e.clientY; base.style.left = `${e.clientX - r.left}px`; base.style.top = `${e.clientY - r.top}px`; $('ayuda').classList.add('oculto'); mover(e);
+});
+zona.addEventListener('pointermove', (e) => { if (e.pointerId === dedo) mover(e); });
+const soltar = (e) => { if (e.pointerId !== dedo) return; dedo = null; st.dx = 0; st.dy = 0; pomo.style.transform = ''; };
+zona.addEventListener('pointerup', soltar); zona.addEventListener('pointercancel', soltar);
+function mover(e) {
+  let x = (e.clientX - cx) / 55; let y = (e.clientY - cy) / 55; const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
+  st.dx = Math.round(x * 100) / 100; st.dy = Math.round(y * 100) / 100; pomo.style.transform = `translate(${st.dx * 45}px, ${st.dy * 45}px)`;
+}
+$('accion').addEventListener('pointerdown', (e) => { e.preventDefault(); st.accion = 1; vibrar(15); });
+// Teclado para probar en escritorio: WASD / flechas + espacio.
+const teclas = new Set();
+addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT') return; teclas.add(e.key.toLowerCase()); if (e.key === ' ') st.accion = 1; });
+addEventListener('keyup', (e) => teclas.delete(e.key.toLowerCase()));
+
+// input [dx, dy, accion]: solo cuando cambia, como mucho a 20/s.
+let ultimo = '';
+setInterval(() => {
+  if (!st.unido) return;
+  let kx = 0; let ky = 0;
+  if (teclas.has('a') || teclas.has('arrowleft')) kx -= 1; if (teclas.has('d') || teclas.has('arrowright')) kx += 1;
+  if (teclas.has('w') || teclas.has('arrowup')) ky -= 1; if (teclas.has('s') || teclas.has('arrowdown')) ky += 1;
+  const v = [dedo !== null ? st.dx : kx, dedo !== null ? st.dy : ky, st.accion]; const k = v.join(',');
+  if (k !== ultimo || st.accion) { socket.volatile.emit(EV.INPUT, v); ultimo = k; }
+  st.accion = 0;
+}, 50);
+
+// ---------- Vista local: tú en el centro, tus compañeros, los rivales y los orbes cercanos ----------
+const radar = $('radar'); const rc = radar.getContext('2d'); const cam = { x: null, y: null };
+const RIVAL = { azul: '#f97316', naranja: '#3b82f6' };
+function dibujarRadar(t) {
+  requestAnimationFrame(dibujarRadar);
+  const m = st.me; if (!m || $('sJuego').classList.contains('oculto')) return;
+  const dpr = Math.min(2, devicePixelRatio || 1); const w = radar.clientWidth; const h = radar.clientHeight;
+  if (radar.width !== Math.round(w * dpr) || radar.height !== Math.round(h * dpr)) { radar.width = Math.round(w * dpr); radar.height = Math.round(h * dpr); }
+  rc.setTransform(dpr, 0, 0, dpr, 0, 0); rc.clearRect(0, 0, w, h);
+  if (cam.x === null) { cam.x = m.x; cam.y = m.y; }
+  cam.x += (m.x - cam.x) * .25; cam.y += (m.y - cam.y) * .25;
+  const R = m.cerca?.r || 260; const k = Math.min(w, h) / (1.6 * R);
+  const X = (x) => w / 2 + (x - cam.x) * k; const Y = (y) => h / 2 + (y - cam.y) * k;
+  // rejilla y borde de la arena
+  rc.strokeStyle = 'rgba(148,163,255,.10)'; rc.lineWidth = 1;
+  for (let gx = 0; gx <= ARENA.ancho; gx += 50) { rc.beginPath(); rc.moveTo(X(gx), Y(0)); rc.lineTo(X(gx), Y(ARENA.alto)); rc.stroke(); }
+  for (let gy = 0; gy <= ARENA.alto; gy += 50) { rc.beginPath(); rc.moveTo(X(0), Y(gy)); rc.lineTo(X(ARENA.ancho), Y(gy)); rc.stroke(); }
+  rc.strokeStyle = 'rgba(165,180,252,.8)'; rc.lineWidth = 3; rc.strokeRect(X(0), Y(0), ARENA.ancho * k, ARENA.alto * k);
+  // orbes
+  const pulso = 1 + .2 * Math.sin(t / 160);
+  for (const [x, y] of m.cerca?.o || []) {
+    const g = rc.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), 12 * pulso); g.addColorStop(0, '#fff7c2'); g.addColorStop(.35, '#facc15'); g.addColorStop(1, 'rgba(250,204,21,0)');
+    rc.fillStyle = g; rc.beginPath(); rc.arc(X(x), Y(y), 12 * pulso, 0, Math.PI * 2); rc.fill();
   }
-  $('accion').addEventListener('pointerdown', () => { accion = 1; });
-  // Teclado (escritorio): WASD / flechas + espacio
-  const teclas = new Set();
-  addEventListener('keydown', (e) => { teclas.add(e.key.toLowerCase()); if (e.key === ' ') accion = 1; });
-  addEventListener('keyup', (e) => teclas.delete(e.key.toLowerCase()));
+  // alcance de la embestida (si está cargada)
+  const miEq = EQUIPOS.indexOf(m.equipo); const alcance = C.REGLAS_BASE.embestida.radio;
+  let rivalATiro = false;
+  if (m.recargaMs === 0) { rc.setLineDash([6, 6]); rc.strokeStyle = 'rgba(239,68,68,.55)'; rc.lineWidth = 2; rc.beginPath(); rc.arc(X(m.x), Y(m.y), alcance * k, 0, Math.PI * 2); rc.stroke(); rc.setLineDash([]); }
+  // jugadores cercanos
+  const rJ = C.REGLAS_BASE.radioJugador * k;
+  for (const [x, y, eq] of m.cerca?.j || []) {
+    const rival = eq !== miEq; const color = EQ[EQUIPOS[eq]][0];
+    const d = Math.hypot(x - m.x, y - m.y); if (rival && d <= alcance) rivalATiro = true;
+    rc.beginPath(); rc.arc(X(x), Y(y), rJ, 0, Math.PI * 2); rc.fillStyle = color; rc.fill();
+    if (rival) { rc.lineWidth = 3; rc.strokeStyle = d <= alcance ? '#fff' : 'rgba(239,68,68,.9)'; rc.stroke(); }
+  }
+  // tú
+  rc.beginPath(); rc.arc(X(m.x), Y(m.y), rJ * 1.25, 0, Math.PI * 2); rc.fillStyle = st.color; rc.fill();
+  rc.lineWidth = 4; rc.strokeStyle = '#fff'; rc.stroke();
+  rc.beginPath(); rc.arc(X(m.x), Y(m.y), rJ * (1.7 + .3 * Math.sin(t / 250)), 0, Math.PI * 2); rc.strokeStyle = 'rgba(255,255,255,.35)'; rc.lineWidth = 2; rc.stroke();
+  rc.fillStyle = '#fff'; rc.font = '700 13px Rajdhani, system-ui'; rc.textAlign = 'center'; rc.fillText('TÚ', X(m.x), Y(m.y) - rJ * 1.25 - 6);
+  // el botón avisa cuando hay un rival a tiro
+  const listo = rivalATiro && m.recargaMs === 0; if (listo && !$('accion').classList.contains('listo')) vibrar(8);
+  $('accion').classList.toggle('listo', listo);
+}
+requestAnimationFrame(dibujarRadar);
 
-  let ultimo = '';
-  setInterval(() => {
-    if (!unido) return;
-    let kx = 0, ky = 0;
-    if (teclas.has('a') || teclas.has('arrowleft')) kx -= 1; if (teclas.has('d') || teclas.has('arrowright')) kx += 1;
-    if (teclas.has('w') || teclas.has('arrowup')) ky -= 1; if (teclas.has('s') || teclas.has('arrowdown')) ky += 1;
-    const v = origen ? [dx, dy, accion] : [kx || dx, ky || dy, accion];
-    const k = v.join(',');
-    if (k !== ultimo || accion) { socket.volatile.emit(EV.INPUT, v); ultimo = k; }
-    accion = 0;
-  }, 50);
-  setInterval(() => { $('reloj').textContent = `${Math.ceil(Math.max(0, finFase - performance.now()) / 1000)} s`; }, 250);
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+pintarFase();
 </script>
 </body>
 </html>

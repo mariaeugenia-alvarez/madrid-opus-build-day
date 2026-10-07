@@ -2,6 +2,8 @@
 
 Responsable: mariaeugenia-alvarez
 
+**Estado:** borrador
+
 ## Punto de partida
 
 - **El móvil es un mando.** El jugador mira la pantalla grande para ver la arena. El móvil no recibe `state` (va solo al visor, por ancho de banda; ver `infra/AGENTS.md`), sino `me` a 10/s con sus propios datos.
@@ -30,7 +32,7 @@ El fondo del móvil es siempre el color de su equipo, para orientarse en la pant
 | Espectador (`me.espectador`) | «Entras en la siguiente ronda», sin controles |
 
 **¿Cómo propone y vota cambios desde el móvil?**
-En `PARCHE`: campo de texto de `LIMITES.propuesta` caracteres con contador y botón «Proponer» (la propuesta pasa por la moderación del visor). Debajo, las candidatas de `fase.datos.candidatas`, actualizadas con `votacion`, cada una con su botón de voto y su número de votos. **Un voto por persona y no se puede cambiar** (así lo hace el simulador); la candidata votada queda marcada usando `me.voto`.
+En `PARCHE`: campo de texto de `LIMITES.propuesta` caracteres con contador y botón «Proponer» (la propuesta pasa por la moderación del visor). Debajo, las candidatas de `fase.datos.candidatas`, actualizadas con `votacion`, cada una con su botón de voto y su número de votos. **Un voto por persona, puede cambiarse mientras la votación esté abierta** (ajustado por coordinación, ver prompts/README.md); la candidata votada queda marcada usando `me.voto`.
 
 **¿Cómo se mantiene fluido aunque la red vaya irregular?**
 El móvil no pinta la arena, así que no hay nada que interpolar. Los controles responden en local al instante, sin esperar al servidor. El tiempo restante se cuenta en local a partir de `fase.restanteMs`. Indicador de conexión discreto.
@@ -48,7 +50,7 @@ Safari en iOS 16+ y Chrome en Android 12+. Como mínimo, un iPhone y un Android 
 
 1. **Reconexión sin perder puntos.** Que `join` acepte un `token` opcional (o que su ack devuelva uno) y que el servidor conserve al jugador desconectado unos 60 s. Sin esto, un móvil que se bloquea a media ronda pierde todos sus puntos.
 2. **Hora de fin de la fase.** Que `fase` incluya una marca de tiempo de fin, o que confirme que `restanteMs` es suficiente para contar en local.
-3. **Confirmar el voto único.** El simulador no deja cambiar el voto. Si el equipo prefiere permitirlo, hay que cambiarlo en el contrato.
+3. **Voto cambgeable.** (Ajustado por coordinación: ahora se puede cambiar el voto mientras la votación está abierta, ver prompts/README.md y shared/contract.js)
 
 ## Prompt
 

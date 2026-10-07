@@ -5,29 +5,92 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Control del presentador</title>
 <style>
-  :root { --bg:#0b0d12; --panel:#141824; --fg:#e8eaf0; --mute:#8b93a7; --oro:#facc15; }
+  :root { --bg:#0b0d12; --panel:#141824; --fg:#e8eaf0; --mute:#8b93a7; --oro:#facc15; --azul:#3b82f6; --naranja:#f97316; }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui, sans-serif; padding:16px; max-width:900px; margin:auto; }
-  h1 { font-size:20px; margin:0 0 4px; } .mute { color:var(--mute); }
-  section { background:var(--panel); border-radius:12px; padding:14px; margin:12px 0; }
-  h2 { font-size:13px; letter-spacing:.2em; color:var(--mute); margin:0 0 10px; text-transform:uppercase; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui, sans-serif; padding:12px; max-width:960px; margin:auto; }
+  h1 { font-size:18px; margin:0 0 8px; } .mute { color:var(--mute); }
+  section { background:var(--panel); border-radius:12px; padding:14px; margin:10px 0; }
+  h2 { font-size:12px; letter-spacing:.2em; color:var(--mute); margin:0 0 10px; text-transform:uppercase; }
   button { font:inherit; background:#232a3b; color:var(--fg); border:0; border-radius:8px; padding:10px 14px; margin:3px; cursor:pointer; }
   button:hover { background:#2f3850; } .si { background:#166534; } .no { background:#7f1d1d; }
-  .prop { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #222838; }
-  .prop .t { flex:1; } .estado { font-size:12px; padding:2px 8px; border-radius:999px; background:#232a3b; }
+  .kbd { font-size:11px; color:var(--mute); margin-left:6px; border:1px solid #333a4d; border-radius:4px; padding:0 4px; }
+
+  /* status bar */
+  #status { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
+  #status .fase { font-size:22px; font-weight:800; color:var(--oro); }
+  #status .ronda { font-size:14px; color:var(--mute); }
+  #status .reloj { font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; }
+  #status .pausa { background:#854d0e; color:#fff; font-weight:700; padding:3px 10px; border-radius:999px; font-size:12px; display:none; }
+  #status.pausado .pausa { display:inline-block; }
+  #status .conectados { color:var(--mute); font-size:13px; }
+  #status .marcador { display:flex; gap:10px; font-weight:700; }
+  #status .az { color:var(--azul); } #status .na { color:var(--naranja); }
+  .grid-botones { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:8px; }
+  .grid-botones button { padding:16px 10px; font-size:15px; font-weight:700; }
+  #btn-reiniciar.armado { background:#7f1d1d; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+  .prop { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #222838; flex-wrap:wrap; }
+  .prop .t { flex:1; min-width:140px; } .estado { font-size:12px; padding:2px 8px; border-radius:999px; background:#232a3b; }
   .pendiente .estado { background:#854d0e; } .aprobada .estado { background:#166534; } .rechazada { opacity:.45; }
-  #fase { font-weight:700; color:var(--oro); }
+  .prop button { padding:14px 18px; font-size:15px; }
+  #resueltas { opacity:.7; }
+  #resueltas[open] summary { margin-bottom:8px; }
+
+  .barra-wrap { margin:8px 0; }
+  .barra-label { display:flex; justify-content:space-between; font-size:13px; margin-bottom:3px; }
+  .barra { height:14px; border-radius:7px; background:#232a3b; overflow:hidden; }
+  .barra > div { height:100%; background:var(--oro); transition:width .3s; }
+
+  #log { font-size:13px; color:var(--mute); max-height:140px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:3px; }
+  #log div span.t { color:#555d73; margin-right:6px; }
+
+  @media (max-width:520px) {
+    #status .reloj { font-size:22px; } #status .fase { font-size:18px; }
+    .grid-botones button { padding:14px 6px; font-size:13px; }
+  }
 </style>
 </head>
 <body>
 <h1>Control del presentador</h1>
-<div class="mute">Nunca se proyecta: aquí se modera antes de que nada llegue a la pantalla grande. Fase: <span id="fase">–</span></div>
+<div class="mute">Nunca se proyecta: aquí se modera antes de que nada llegue a la pantalla grande.</div>
+
+<section id="status">
+  <span class="fase" id="fase">–</span>
+  <span class="ronda" id="ronda"></span>
+  <span class="reloj" id="reloj">–</span>
+  <span class="pausa">PAUSA</span>
+  <span class="conectados" id="conectados">0 conectados</span>
+  <span class="marcador"><span class="az" id="m-azul">AZUL 0</span><span class="na" id="m-naranja">NARANJA 0</span></span>
+</section>
+
 <section>
   <h2>Partida</h2>
-  <button data-a="iniciar">Iniciar / continuar</button><button data-a="pausar">Pausa</button>
-  <button data-a="saltar">Saltar fase</button><button data-a="final">Ir a la final</button><button data-a="reiniciar">Reiniciar evento</button>
+  <div class="grid-botones">
+    <button data-a="iniciar">Iniciar / continuar<span class="kbd">Espacio</span></button>
+    <button data-a="pausar">Pausa<span class="kbd">P</span></button>
+    <button data-a="saltar">Saltar fase<span class="kbd">S</span></button>
+    <button data-a="final">Ir a la final<span class="kbd">F</span></button>
+    <button id="btn-reiniciar">Reiniciar evento<span class="kbd">doble pulsación</span></button>
+  </div>
 </section>
-<section><h2>Propuestas del público</h2><div id="lista" class="mute">Sin propuestas todavía.</div></section>
+
+<section id="sec-votacion" style="display:none">
+  <h2>Votación del parche</h2>
+  <div id="votos"></div>
+</section>
+
+<section>
+  <h2>Propuestas pendientes (<span id="n-pendientes">0</span>)</h2>
+  <div id="lista-pendientes" class="mute">Sin propuestas todavía.</div>
+  <details id="resueltas"><summary class="mute">Resueltas</summary><div id="lista-resueltas"></div></details>
+</section>
+
+<section>
+  <h2>Eventos</h2>
+  <div id="log"></div>
+</section>
+
 <script src="/socket.io/socket.io.js"></script>
 <script type="module">
 import * as C from '/shared/contract.js';
@@ -37,24 +100,100 @@ let key = new URLSearchParams(location.search).get('key'); try { key = key || se
 if (!key) key = prompt('Clave del visor') || ''; try { sessionStorage.setItem('visorKey', key); } catch {}
 const socket = io({ transports: ['websocket'] });
 socket.on('connect', () => socket.emit(EV.VISOR_JOIN, { key }, (r) => { if (!r.ok) $('fase').textContent = 'CLAVE INCORRECTA'; }));
-socket.on(EV.FASE, (f) => { $('fase').textContent = `${f.fase}${f.pausado ? ' (pausa)' : ''}`; });
-const ctl = (accion, id) => socket.emit(EV.CONTROL, { accion, id }, (r) => { if (!r.ok) alert(r.error); });
+
+const ctl = (accion, id) => socket.emit(EV.CONTROL, { accion, id }, (r) => { if (!r.ok) addLog({ tipo: 'error', texto: r.error, t: Date.now() }); });
+
 document.querySelectorAll('[data-a]').forEach((b) => { b.onclick = () => ctl(b.dataset.a); });
-socket.on(EV.PROPUESTAS, (l) => {
-  if (!l.length) { $('lista').textContent = 'Sin propuestas todavía.'; return; }
-  $('lista').innerHTML = '';
-  for (const p of [...l].reverse()) {
-    const d = document.createElement('div'); d.className = `prop ${p.estado}`;
-    d.innerHTML = `<span class="t"></span><span class="mute"></span><span class="estado">${p.estado}</span>`;
-    d.querySelector('.t').textContent = p.texto; d.querySelector('.mute').textContent = `${p.autor} · ${p.votos} votos`;
-    if (p.estado === 'pendiente') {
-      const si = document.createElement('button'); si.className = 'si'; si.textContent = 'Aprobar'; si.onclick = () => ctl('aprobar', p.id);
-      const no = document.createElement('button'); no.className = 'no'; no.textContent = 'Rechazar'; no.onclick = () => ctl('rechazar', p.id);
-      d.append(si, no);
-    }
-    $('lista').appendChild(d);
-  }
+
+// --- reiniciar con doble pulsación (sin diálogos del navegador) ---
+const btnReiniciar = $('btn-reiniciar');
+let armado = false, armadoTimer = null;
+btnReiniciar.onclick = () => {
+  if (armado) { clearTimeout(armadoTimer); armado = false; btnReiniciar.classList.remove('armado'); ctl('reiniciar'); return; }
+  armado = true; btnReiniciar.classList.add('armado');
+  armadoTimer = setTimeout(() => { armado = false; btnReiniciar.classList.remove('armado'); }, 3000);
+};
+
+// --- atajos de teclado ---
+window.addEventListener('keydown', (e) => {
+  if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+  if (e.code === 'Space') { e.preventDefault(); ctl('iniciar'); }
+  else if (e.key === 'p' || e.key === 'P') ctl('pausar');
+  else if (e.key === 's' || e.key === 'S') ctl('saltar');
+  else if (e.key === 'f' || e.key === 'F') ctl('final');
 });
+
+// --- estado / reloj local ---
+let restanteMs = 0, ultimaActualizacion = Date.now(), pausado = false;
+function fmt(ms) { ms = Math.max(0, ms); const s = Math.ceil(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`; }
+setInterval(() => {
+  if (!pausado) { const transcurrido = Date.now() - ultimaActualizacion; $('reloj').textContent = fmt(restanteMs - transcurrido); }
+}, 200);
+
+socket.on(EV.FASE, (f) => {
+  $('fase').textContent = f.fase;
+  $('ronda').textContent = f.rondas ? `ronda ${f.ronda}/${f.rondas}` : '';
+  restanteMs = f.restanteMs || 0; ultimaActualizacion = Date.now(); pausado = !!f.pausado;
+  $('reloj').textContent = fmt(restanteMs);
+  $('status').classList.toggle('pausado', pausado);
+  const candidatas = f.datos && f.datos.candidatas;
+  $('sec-votacion').style.display = (f.fase === 'PARCHE' && candidatas) ? '' : 'none';
+  if (candidatas) pintarVotos(candidatas);
+});
+
+socket.on(EV.STATS, (s) => {
+  $('conectados').textContent = `${s.conectados} conectados${s.bots ? ` · ${s.bots} bots` : ''}`;
+  if (s.equipos) { $('m-azul').textContent = `AZUL ${s.equipos.azul}`; $('m-naranja').textContent = `NARANJA ${s.equipos.naranja}`; }
+});
+
+function pintarVotos(candidatas) {
+  const totalVotos = candidatas.reduce((a, c) => a + (c.votos || 0), 0) || 1;
+  const cont = $('votos'); cont.innerHTML = '';
+  for (const c of [...candidatas].sort((a, b) => b.votos - a.votos)) {
+    const wrap = document.createElement('div'); wrap.className = 'barra-wrap';
+    const pct = Math.round((c.votos / totalVotos) * 100);
+    wrap.innerHTML = `<div class="barra-label"><span></span><span>${c.votos} votos</span></div><div class="barra"><div style="width:${pct}%"></div></div>`;
+    wrap.querySelector('.barra-label span').textContent = c.texto;
+    cont.appendChild(wrap);
+  }
+}
+socket.on(EV.VOTACION, pintarVotos);
+
+socket.on(EV.PROPUESTAS, (l) => {
+  const pendientes = l.filter((p) => p.estado === 'pendiente');
+  const resueltas = l.filter((p) => p.estado !== 'pendiente');
+  $('n-pendientes').textContent = pendientes.length;
+  $('lista-pendientes').innerHTML = '';
+  if (!pendientes.length) $('lista-pendientes').textContent = 'Sin propuestas todavía.';
+  for (const p of [...pendientes].reverse()) $('lista-pendientes').appendChild(filaPropuesta(p));
+  $('lista-resueltas').innerHTML = '';
+  for (const p of [...resueltas].reverse()) $('lista-resueltas').appendChild(filaPropuesta(p));
+});
+
+function filaPropuesta(p) {
+  const d = document.createElement('div'); d.className = `prop ${p.estado}`;
+  d.innerHTML = `<span class="t"></span><span class="mute"></span><span class="estado">${p.estado}</span>`;
+  d.querySelector('.t').textContent = p.texto; d.querySelector('.mute').textContent = `${p.autor} · ${p.votos} votos`;
+  if (p.estado === 'pendiente') {
+    const si = document.createElement('button'); si.className = 'si'; si.textContent = 'Aprobar'; si.onclick = () => ctl('aprobar', p.id);
+    const no = document.createElement('button'); no.className = 'no'; no.textContent = 'Rechazar'; no.onclick = () => ctl('rechazar', p.id);
+    d.append(si, no);
+  }
+  return d;
+}
+
+// --- log de eventos/anuncios ---
+function addLog({ tipo, texto, t }) {
+  const log = $('log'); const d = document.createElement('div');
+  const hora = new Date(t || Date.now()).toLocaleTimeString('es-ES', { hour12: false });
+  d.innerHTML = `<span class="t"></span><span></span>`;
+  d.querySelector('.t').textContent = hora;
+  d.querySelector('span:last-child').textContent = `[${tipo}] ${texto}`;
+  log.prepend(d);
+  while (log.children.length > 30) log.removeChild(log.lastChild);
+}
+socket.on(EV.EVENTO, (e) => addLog({ tipo: e.tipo, texto: e.texto, t: e.t }));
+socket.on(EV.ANUNCIO, (a) => addLog({ tipo: 'anuncio', texto: `${a.titulo}: ${a.texto}`, t: Date.now() }));
 </script>
 </body>
 </html>

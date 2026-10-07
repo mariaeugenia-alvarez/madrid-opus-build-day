@@ -11,6 +11,7 @@ Responsable: Pablo Albaladejo (Persona 6, Infraestructura y QA). Lee antes `CLAU
 | `loadtest.js` | `npm run loadtest -- [url] [clientes] [segundos]`: N clientes Socket.IO solo WebSocket. Mide conexiones, rechazos (429), latencia p50/p95/p99 y ticks recibidos. Sin URL usa `.tunnel-url`. |
 | `qr.js` | `npm run qr -- [url]`: escribe `qr.png` (1024 px, para proyectar o imprimir) y `qr.svg`, y pinta el QR en la terminal. `tunnel.sh` lo llama solo. |
 | `qr.png`, `qr.svg` | QR de la URL pública actual: se versionan junto con `.tunnel-url`. |
+| `supervisor.sh` | Mantiene vivo el servidor: si termina, lo relanza en 1 s. `VISOR_KEY=… BOTS=15 UI=sim bash infra/supervisor.sh`. La clave tiene que ir fijada. |
 | `.tunnel-url` | URL pública actual. Está versionado para que el equipo la vea: haz commit cada vez que cambie. |
 
 ## Datos medidos (no los olvides al diseñar)

@@ -1,2 +1,4 @@
 .omc
 node_modules/
+# Resumen de estadísticas que escribe game/stats.js en directo (P4): no debe colarse en los commits de los parches
+data/

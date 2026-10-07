@@ -16,6 +16,10 @@ const contar = (k) => { vistos[k] = (vistos[k] || 0) + 1; };
 const visor = io(URL, { transports: ['websocket'] });
 visor.on('connect', () => visor.emit(EV.VISOR_JOIN, { key: KEY }, (r) => r.ok || fallos.push(`visor:join ${r.error}`)));
 for (const ev of [EV.STATE, EV.STATS, EV.JUGADORES, EV.PROPUESTAS, EV.EVENTO, EV.ANUNCIO, EV.PARCHE]) visor.on(ev, () => contar(`visor ${ev}`));
+visor.on(EV.PARCHE, (p) => {
+  const faltan = ['version', 'nombre', 'reglaId', 'propuestaId', 'commit', 'aprobadoEn', 'desplegadoEn'].filter((k) => p[k] === undefined);
+  if (faltan.length) fallos.push(`parche sin ${faltan.join(', ')}`); else contar('parche completo');
+});
 visor.on(EV.PROPUESTAS, (l) => {
   const mia = l.find((p) => p.texto === 'Prueba e2e' && p.estado === 'pendiente');
   if (mia) visor.emit(EV.CONTROL, { accion: 'aprobar', id: mia.id }, (r) => (r.ok ? contar('aprobada') : fallos.push(r.error)));
@@ -30,17 +34,34 @@ jug.on('connect', () => jug.emit(EV.JOIN, { alias: 'e2e', color: '#ffffff' }, (r
 }));
 for (const ev of [EV.ME, EV.VOTACION, EV.ANUNCIO, EV.PARCHE]) jug.on(ev, () => contar(`jugador ${ev}`));
 jug.on(EV.FASE, (f) => {
+  if (!('finEn' in f)) fallos.push('fase sin finEn');
   if (fases[fases.length - 1] !== f.fase) fases.push(f.fase);
   if (f.fase === FASES.PARCHE && f.datos.candidatas?.length) {
     jug.emit(EV.VOTO, { id: f.datos.candidatas[0].id }, (r) => (r.ok ? contar('voto ok') : fallos.push(`voto ${r.error}`)));
   }
 });
 
+// Reconexión: un segundo jugador se une, se desconecta y vuelve con su token → mismo id.
+const r1 = io(URL, { transports: ['websocket'] });
+r1.on('connect', () => r1.emit(EV.JOIN, { alias: 'e2e-rec', color: '#000000' }, (a) => {
+  if (!a.ok || !a.token) return fallos.push('join sin token');
+  r1.close();
+  setTimeout(() => {
+    const r2 = io(URL, { transports: ['websocket'] });
+    r2.on('connect', () => r2.emit(EV.JOIN, { token: a.token }, (b) => {
+      if (b.ok && b.id === a.id && b.reconectado) contar('reconexión ok');
+      else fallos.push(`reconexión: esperaba id ${a.id}, llegó ${JSON.stringify(b)}`);
+      r2.close();
+    }));
+  }, 1000);
+}));
+
 setTimeout(() => {
   console.log('fases:', fases.join(' → '));
   console.log('eventos:', vistos);
   const esperados = ['join ok', 'propuesta ok', 'aprobada', 'voto ok', `visor ${EV.STATE}`, `visor ${EV.STATS}`,
-    `visor ${EV.JUGADORES}`, `visor ${EV.PROPUESTAS}`, `visor ${EV.EVENTO}`, `jugador ${EV.ME}`, `jugador ${EV.VOTACION}`];
+    `visor ${EV.JUGADORES}`, `visor ${EV.PROPUESTAS}`, `visor ${EV.EVENTO}`, `jugador ${EV.ME}`, `jugador ${EV.VOTACION}`,
+    'reconexión ok', 'parche completo'];
   for (const e of esperados) if (!vistos[e]) fallos.push(`no llegó: ${e}`);
   console.log(fallos.length ? `FALLOS:\n  ${fallos.join('\n  ')}` : 'OK');
   process.exit(fallos.length ? 1 : 0);

@@ -19,7 +19,7 @@ Si existe `public/`, se sirve antes que estas páginas, así que `public/index.h
 
 ## Variables
 
-`PORT`=3000 · `BOTS`=40 · `VISOR_KEY` (si falta se genera una aleatoria y se muestra al arrancar; nunca en el código) · `AUTO`=1 (las fases avanzan solas y los bots proponen y votan; con `AUTO=0`, LOBBY y PARCHE esperan a `control: iniciar`) · `RONDAS`=3 · `LOBBY_S`, `RONDA_S`, `RESULTADOS_S`, `PARCHE_S`, `FINAL_S`, `CEREMONIA_S`.
+`PORT`=3000 · `BOTS`=40 · `RECONEXION_S`=60 (tiempo que se guarda a un jugador desconectado para que vuelva con su `token`) · `GRABAR`=ruta`.jsonl` (graba cada hecho en el formato de `stats.record` de `prompts/04-estadisticas.md`, para usar la partida como fixture de replay) · `VISOR_KEY` (si falta se genera una aleatoria y se muestra al arrancar; nunca en el código) · `AUTO`=1 (las fases avanzan solas y los bots proponen y votan; con `AUTO=0`, LOBBY y PARCHE esperan a `control: iniciar`) · `RONDAS`=3 · `LOBBY_S`, `RONDA_S`, `RESULTADOS_S`, `PARCHE_S`, `FINAL_S`, `CEREMONIA_S`.
 
 ## Normas
 

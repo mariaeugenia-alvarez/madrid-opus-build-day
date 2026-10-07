@@ -9,6 +9,17 @@
 //   el estado completo a 20 Hz va SOLO al visor. Enviarlo a 150 móviles satura la subida
 //   (1 KB × 20 Hz × 150 ≈ 24 Mbit/s → latencias de segundos; con ~200 B baja a ~26 ms).
 //   Los móviles son mandos: miran la pantalla grande y reciben `me` (su estado) a 10 Hz.
+//
+// PENDIENTE DE P1 (adevex-drone). Añadidos compatibles que ya implementa el simulador:
+//   · reconexión con `token` en join (P2 y P4: playerId estable, no perder puntos);
+//   · `finEn` en fase (P2: contar el tiempo en local);
+//   · `parche` con nombre, reglaId, propuestaId, commit, aprobadoEn y desplegadoEn (P4).
+// PENDIENTE DE DECIDIR (P1 + P2 + P4):
+//   · `me`: el contrato y P2 lo quieren a 10 Hz con x, y y recargaMs (minimapa y anillo de recarga);
+//     P4 genera sus datos de estadística con stats.drainMe(), máx. 2/s y solo si cambian.
+//     Propuesta: x, y y recargaMs salen del motor a 10 Hz y se fusionan con lo último de drainMe().
+//   · `stats`: la forma final la define P4 (prompts/04-estadisticas.md, versión `v: 1`).
+//     `ejemploStats` y el simulador son provisionales hasta que exista game/stats.js.
 
 export const TICK_HZ = 20; // bucle del servidor y `state` al visor
 export const ME_HZ = 10; // `me` a cada móvil
@@ -42,16 +53,21 @@ export const FASES = {
 
 export const EV = {
   // ---------------- jugador → servidor ----------------
-  // join      { alias: string(1..12), color: '#rrggbb' }
-  //           ack → { ok: true, id, equipo: 'azul'|'naranja', espectador: bool } | { ok: false, error }
+  // join      { alias: string(1..12), color: '#rrggbb', token?: string }
+  //           ack → { ok: true, id, equipo: 'azul'|'naranja', espectador: bool, token, reconectado: bool }
+  //                 | { ok: false, error }
   //           Si la ronda está en curso entra como espectador hasta la siguiente.
+  //           Reconexión: guarda `token` (localStorage) y reenvíalo en join; con un token válido vuelve
+  //           el mismo jugador (mismo id, equipo y puntos) y se ignoran alias y color. El servidor lo
+  //           guarda 60 s tras desconectarse. Si el token entra desde otra pestaña, gana la última.
   JOIN: 'join',
   // input     [dx, dy, accion]   dx, dy ∈ [-1, 1]; accion 0|1 (1 = intento de embestida)
   //           Máx. 20/s. Array y no objeto para ahorrar bytes.
   INPUT: 'input',
   // propuesta { texto: string(1..80) }  ack → { ok, id } — entra en la cola de moderación del visor
   PROPUESTA: 'propuesta',
-  // voto      { id }  solo en PARCHE, sobre propuestas aprobadas, un voto por jugador. ack → { ok }
+  // voto      { id }  solo en PARCHE, sobre propuestas aprobadas. Un voto por jugador y no se puede
+  //           cambiar. ack → { ok } | { ok: false, error }
   VOTO: 'voto',
 
   // ---------------- visor → servidor ----------------
@@ -65,7 +81,7 @@ export const EV = {
   // ---------------- servidor → visor ----------------
   // state     { tick, restanteMs, j: [[id, x, y, equipo, puntos], …], o: [[x, y], …] }  20/s
   STATE: 'state',
-  // jugadores [{ id, alias, color, equipo, bot, espectador }, …]  al cambiar el roster
+  // jugadores [{ id, alias, color, equipo, bot, espectador, conectado }, …]  al cambiar el roster
   JUGADORES: 'jugadores',
   // stats     ver `ejemploStats` abajo. 1/s
   STATS: 'stats',
@@ -81,7 +97,9 @@ export const EV = {
   ME: 'me',
 
   // ---------------- servidor → todos ----------------
-  // fase      { fase, ronda, rondas, duracionMs, restanteMs, pausado, datos }
+  // fase      { fase, ronda, rondas, duracionMs, restanteMs, finEn, pausado, datos }
+  //           finEn = hora de fin en ms del reloj del servidor (null en pausa). Para contar en local,
+  //           usa restanteMs al recibir el mensaje: no depende del reloj del móvil.
   //           al cambiar de fase, al pausar y al conectarse. `datos` según la fase:
   //             COUNTDOWN  { siguiente: 'RONDA'|'FINAL' }
   //             RONDA/FINAL { ronda, final: bool, reglas: [texto, …] }
@@ -93,7 +111,8 @@ export const EV = {
   VOTACION: 'votacion',
   // anuncio   { titulo, texto }  pantalla completa: FIRST BLOOD, REMONTADA, PARCHE INSTALADO, GRAN FINAL
   ANUNCIO: 'anuncio',
-  // parche    { version: '0.N', regla, votos, lineas, ms }
+  // parche    { version: '0.N', regla, nombre, reglaId, propuestaId, votos, lineas, ms, commit,
+  //             aprobadoEn, desplegadoEn }   (regla = nombre; ms = desplegadoEn − aprobadoEn)
   PARCHE: 'parche',
 };
 

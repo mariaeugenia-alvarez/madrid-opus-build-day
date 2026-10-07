@@ -3,7 +3,7 @@
 // simplificado, para que móvil (P2), visor (P3) y estadísticas (P4) trabajen sin
 // esperar al servidor real (P1). No es el servidor de la demo.
 //
-// Variables: PORT=3000 BOTS=40 VISOR_KEY=<clave> AUTO=1 RONDAS=3
+// Variables: PORT=3000 BOTS=40 VISOR_KEY=<clave> AUTO=1 RONDAS=3 RECONEXION_S=60 GRABAR=<ruta.jsonl>
 //            (sin VISOR_KEY se genera una aleatoria y se muestra al arrancar: nunca en el código)
 //            LOBBY_S=10 RONDA_S=90 RESULTADOS_S=10 PARCHE_S=20 FINAL_S=90 CEREMONIA_S=20
 // AUTO=1: las fases avanzan solas y los bots proponen y votan. AUTO=0: LOBBY y PARCHE
@@ -28,6 +28,8 @@ const BOTS = num(process.env.BOTS, 40);
 const VISOR_KEY = process.env.VISOR_KEY || crypto.randomBytes(4).toString('hex');
 const AUTO = process.env.AUTO !== '0';
 const RONDAS = num(process.env.RONDAS, 3);
+const RECONEXION_S = num(process.env.RECONEXION_S, 60); // se guarda al jugador desconectado este tiempo
+const GRABAR = process.env.GRABAR || ''; // ruta .jsonl: graba los hechos en el formato de stats.record (P4)
 const DUR = {
   [FASES.LOBBY]: num(process.env.LOBBY_S, 10),
   [FASES.COUNTDOWN]: 3,
@@ -51,6 +53,13 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const now = () => Date.now();
 const d2 = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+const slug = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+// Grabación de hechos en JSON Lines con el formato de stats.record (prompts/04-estadisticas.md, requisito 2).
+const grabacion = GRABAR ? fs.createWriteStream(GRABAR, { flags: 'a' }) : null;
+const grabar = (type, datos) => {
+  if (grabacion) grabacion.write(`${JSON.stringify({ type, t: now(), ...datos })}\n`);
+};
 
 // ------------------------------------------------------------------ estado
 const jugadores = new Map(); // id → jugador
@@ -79,7 +88,7 @@ function nuevaRonda() {
 }
 
 const activos = () => [...jugadores.values()].filter((j) => !j.espectador);
-const reales = () => [...jugadores.values()].filter((j) => !j.bot);
+const reales = () => [...jugadores.values()].filter((j) => !j.bot && j.conectado);
 const resumen = (j) => j && { id: j.id, alias: j.alias, color: j.color, equipo: EQUIPOS[j.equipo], puntos: j.puntos };
 
 function crearJugador({ alias, color, bot = false, socketId = null }) {
@@ -90,12 +99,14 @@ function crearJugador({ alias, color, bot = false, socketId = null }) {
     equipo: cuenta[0] <= cuenta[1] ? 0 : 1,
     x: rnd(50, ARENA.ancho - 50), y: rnd(50, ARENA.alto - 50),
     puntos: 0, total: 0, racha: 0, recargaHasta: 0, voto: null,
+    token: bot ? null : crypto.randomUUID(), conectado: true, desconectadoEn: null,
     espectador: !bot && JUEGO.has(fase),
     input: { dx: 0, dy: 0, accion: 0 },
     objetivo: null, cambioObjetivo: 0,
   };
   jugadores.set(j.id, j);
   rosterSucio = true;
+  grabar('join', { playerId: j.id, alias, color, equipo: EQUIPOS[j.equipo] });
   return j;
 }
 
@@ -124,10 +135,10 @@ function rivalCercano(j, radio) {
 const anuncio = (titulo, texto = '') => io.emit(EV.ANUNCIO, { titulo, texto });
 const ticker = (tipo, texto) => io.to('visor').emit(EV.EVENTO, { tipo, texto, t: now() });
 const restante = () => (pausado ? pausaRestante : Math.max(0, faseHasta - now()));
-const payloadFase = () => ({ ...ultimaFase, restanteMs: restante(), pausado });
+const payloadFase = () => ({ ...ultimaFase, restanteMs: restante(), finEn: pausado ? null : faseHasta, pausado });
 const emitirFase = () => io.emit(EV.FASE, payloadFase());
 const roster = () => [...jugadores.values()].map((j) => ({
-  id: j.id, alias: j.alias, color: j.color, equipo: EQUIPOS[j.equipo], bot: j.bot, espectador: j.espectador,
+  id: j.id, alias: j.alias, color: j.color, equipo: EQUIPOS[j.equipo], bot: j.bot, espectador: j.espectador, conectado: j.conectado,
 }));
 const listaPropuestas = () => propuestas.map(({ id, texto, autor, estado, votos }) => ({ id, texto, autor, estado, votos }));
 const candidatas = () => propuestas.filter((p) => p.estado === 'aprobada').map(({ id, texto, votos }) => ({ id, texto, votos }));
@@ -178,7 +189,8 @@ function paso(dt) {
   for (const j of lista) {
     for (let i = orbes.length - 1; i >= 0; i--) {
       if (d2(orbes[i], j) <= rr) {
-        orbes.splice(i, 1);
+        const [o] = orbes.splice(i, 1);
+        grabar('orb', { playerId: j.id, valor: 1, x: Math.round(o.x), y: Math.round(o.y) });
         sumar(j, 1);
         j.racha += 1;
         registrarRacha(j);
@@ -193,12 +205,14 @@ function paso(dt) {
     if (t < j.recargaHasta) continue;
     j.recargaHasta = t + R.embestida.recargaMs;
     const v = rivalCercano(j, R.embestida.radio);
+    grabar('accion', { playerId: j.id, acierto: Boolean(v) });
     if (!v) continue;
     const robo = Math.min(R.embestida.robo, v.puntos);
     v.puntos -= robo;
     v.total -= robo;
     v.racha = 0;
     sumar(j, robo);
+    grabar('ram', { atacanteId: j.id, victimaId: v.id, robado: robo, x: Math.round(v.x), y: Math.round(v.y) });
     rondaSt.embestidas += 1;
     evento.embestidas += 1;
     ticker('embestida', `${j.alias} embiste a ${v.alias} (+${robo})`);
@@ -258,7 +272,10 @@ function prepararVotacion() {
     for (const idea of IDEAS) {
       if (candidatas().length >= 3) break;
       if (usadas.has(idea)) continue;
-      propuestas.push({ id: nextPropId++, texto: idea, autor: pick(NOMBRES), estado: 'aprobada', votos: 0 });
+      const bot = pick([...jugadores.values()].filter((x) => x.bot));
+      const p = { id: nextPropId++, texto: idea, autor: bot?.alias || 'bot', autorId: bot?.id ?? null, estado: 'aprobada', votos: 0 };
+      propuestas.push(p);
+      grabar('propuesta', { id: p.id, autorId: p.autorId, texto: p.texto, visible: true });
       evento.propuestas += 1;
     }
   }
@@ -272,10 +289,18 @@ function instalarParche() {
   if (!ganadora) return;
   const p = propuestas.find((x) => x.id === ganadora.id);
   p.estado = 'instalada';
+  // El simulador instala al instante; simula que Claude tardó `ms` desde la aprobación.
+  const ms = Math.round(rnd(20000, 90000));
+  const desplegadoEn = now();
+  const aprobadoEn = desplegadoEn - ms;
   const parche = {
-    version: siguienteVersion(), regla: p.texto, votos: p.votos,
-    lineas: Math.round(rnd(15, 140)), ms: Math.round(rnd(20000, 90000)),
+    version: siguienteVersion(), regla: p.texto, nombre: p.texto, reglaId: slug(p.texto), propuestaId: p.id,
+    votos: p.votos, lineas: Math.round(rnd(15, 140)), ms, commit: crypto.randomBytes(4).toString('hex'),
+    aprobadoEn, desplegadoEn,
   };
+  grabar('aprobada', { propuestaId: p.id, t: aprobadoEn });
+  grabar('parche', { version: parche.version, reglaId: parche.reglaId, nombre: parche.nombre, propuestaId: p.id,
+    commit: parche.commit, aprobadoEn, desplegadoEn });
   parches.push(parche);
   io.emit(EV.PARCHE, parche);
   anuncio('PARCHE INSTALADO', `v${parche.version} · ${parche.regla}`);
@@ -329,6 +354,7 @@ function entrar(nueva) {
     default:
   }
   ultimaFase = { fase, ronda, rondas: RONDAS, duracionMs: DUR[nueva] * 1000, datos };
+  grabar('fase', { fase, ronda, duracionMs: DUR[nueva] * 1000 });
   emitirFase();
   console.log(`[fase] ${fase}${JUEGO.has(fase) ? ` (ronda ${ronda})` : ''}`);
 }
@@ -375,14 +401,28 @@ io.on('connection', (socket) => {
 
   socket.on(EV.JOIN, (data, ack) => {
     const reply = responder(ack);
-    if (jugador) return reply({ ok: true, id: jugador.id, equipo: EQUIPOS[jugador.equipo], espectador: jugador.espectador });
+    const respuesta = (j, extra = {}) => ({ ok: true, id: j.id, equipo: EQUIPOS[j.equipo], espectador: j.espectador, token: j.token, ...extra });
+    if (jugador) return reply(respuesta(jugador));
+    // Reconexión: mismo token → mismo jugador, con sus puntos (petición de P2 y P4).
+    const previo = typeof data?.token === 'string' && [...jugadores.values()].find((x) => !x.bot && x.token === data.token);
+    if (previo) {
+      const anterior = previo.conectado && previo.socketId !== socket.id ? io.sockets.sockets.get(previo.socketId) : null;
+      Object.assign(previo, { socketId: socket.id, conectado: true, desconectadoEn: null });
+      anterior?.disconnect(true); // misma persona en dos pestañas: gana la última
+      jugador = previo;
+      socket.join('jugadores');
+      rosterSucio = true;
+      grabar('join', { playerId: previo.id, alias: previo.alias, color: previo.color, equipo: EQUIPOS[previo.equipo] });
+      ticker('entra', `${previo.alias} vuelve`);
+      return reply(respuesta(previo, { reconectado: true }));
+    }
     const alias = typeof data?.alias === 'string' ? data.alias.trim() : '';
     if (!alias || alias.length > LIMITES.alias) return reply({ ok: false, error: `alias de 1 a ${LIMITES.alias} caracteres` });
     const color = /^#[0-9a-f]{6}$/i.test(data?.color || '') ? data.color : pick(COLORES);
     jugador = crearJugador({ alias, color, socketId: socket.id });
     socket.join('jugadores');
     ticker('entra', `${alias} entra en el equipo ${EQUIPOS[jugador.equipo]}`);
-    return reply({ ok: true, id: jugador.id, equipo: EQUIPOS[jugador.equipo], espectador: jugador.espectador });
+    return reply(respuesta(jugador, { reconectado: false }));
   });
 
   socket.on(EV.INPUT, (v) => {
@@ -397,8 +437,9 @@ io.on('connection', (socket) => {
     if (!jugador) return reply({ ok: false, error: 'primero join' });
     const texto = typeof data?.texto === 'string' ? data.texto.trim() : '';
     if (!texto || texto.length > LIMITES.propuesta) return reply({ ok: false, error: `texto de 1 a ${LIMITES.propuesta} caracteres` });
-    const p = { id: nextPropId++, texto, autor: jugador.alias, estado: 'pendiente', votos: 0 };
+    const p = { id: nextPropId++, texto, autor: jugador.alias, autorId: jugador.id, estado: 'pendiente', votos: 0 };
     propuestas.push(p);
+    grabar('propuesta', { id: p.id, autorId: p.autorId, texto, visible: false });
     evento.propuestas += 1;
     votacionSucia = true;
     return reply({ ok: true, id: p.id });
@@ -415,6 +456,7 @@ io.on('connection', (socket) => {
     jugador.voto = p.id;
     evento.votos += 1;
     votacionSucia = true;
+    grabar('voto', { propuestaId: p.id, playerId: jugador.id });
     return reply({ ok: true });
   });
 
@@ -450,6 +492,7 @@ io.on('connection', (socket) => {
         const p = propuestas.find((x) => x.id === msg.id);
         if (!p || p.estado !== 'pendiente') return reply({ ok: false, error: 'propuesta no pendiente' });
         p.estado = msg.accion === 'aprobar' ? 'aprobada' : 'rechazada';
+        if (p.estado === 'aprobada') grabar('propuesta', { id: p.id, autorId: p.autorId, texto: p.texto, visible: true });
         votacionSucia = true;
         break;
       }
@@ -459,9 +502,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (!jugador) return;
-    jugadores.delete(jugador.id);
+    if (!jugador || jugador.socketId !== socket.id) return; // ya reconectado desde otro socket
+    // Se guarda RECONEXION_S por si vuelve con su token; se queda quieto mientras tanto.
+    Object.assign(jugador, { conectado: false, desconectadoEn: now(), input: { dx: 0, dy: 0, accion: 0 } });
     rosterSucio = true;
+    grabar('leave', { playerId: jugador.id });
     ticker('sale', `${jugador.alias} sale`);
   });
 });
@@ -496,6 +541,7 @@ setInterval(seguro('tick', () => {
       j.voto = p.id;
       evento.votos += 1;
       votacionSucia = true;
+      grabar('voto', { propuestaId: p.id, playerId: j.id });
     }
   }
   if (!pausado && now() >= faseHasta && !(MANUALES.has(fase) && !AUTO)) avanzar();
@@ -513,7 +559,7 @@ setInterval(seguro('me', () => {
   const orden = [...jugadores.values()].sort((a, b) => b.total - a.total);
   const t = now();
   orden.forEach((j, i) => {
-    if (j.bot) return;
+    if (j.bot || !j.conectado) return;
     io.to(j.socketId).volatile.emit(EV.ME, {
       id: j.id, equipo: EQUIPOS[j.equipo], espectador: j.espectador,
       x: Math.round(j.x), y: Math.round(j.y), puntos: j.puntos, total: j.total,
@@ -523,6 +569,10 @@ setInterval(seguro('me', () => {
 }), 1000 / C.ME_HZ);
 
 setInterval(seguro('difusion', () => {
+  const limite = now() - RECONEXION_S * 1000;
+  for (const j of jugadores.values()) {
+    if (!j.conectado && j.desconectadoEn < limite) { jugadores.delete(j.id); rosterSucio = true; }
+  }
   if (rosterSucio) { rosterSucio = false; io.to('visor').emit(EV.JUGADORES, roster()); }
   if (votacionSucia) {
     votacionSucia = false;

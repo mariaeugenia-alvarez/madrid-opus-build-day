@@ -60,14 +60,27 @@
   const socket = io({ transports: ['websocket'] });
   let dx = 0, dy = 0, accion = 0, finFase = 0, unido = false, miVoto = null;
 
-  $('alias').value = localStorage.getItem('alias') || '';
+  const guardado = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  $('alias').value = guardado('alias') || '';
+  // Reconexión: con el token guardado se vuelve al mismo jugador (mismo id y puntos).
+  socket.on('connect', () => {
+    const token = guardado('token');
+    if (!token) return;
+    socket.emit(EV.JOIN, { token }, (r) => { if (r.ok && r.reconectado) entrar(r); });
+  });
+  socket.on('disconnect', () => { $('fase').textContent = 'Reconectando…'; });
+  function entrar(r) {
+    guardar('token', r.token);
+    unido = true; $('entrada').style.display = 'none'; $('juego').style.display = 'flex';
+    $('msg').textContent = `Equipo ${r.equipo}${r.espectador ? ' · espectador hasta la próxima ronda' : ''}`;
+  }
   $('entrar').onclick = () => {
     const alias = $('alias').value.trim();
     socket.emit(EV.JOIN, { alias, color: $('color').value }, (r) => {
       if (!r.ok) { $('msg').textContent = r.error; return; }
-      try { localStorage.setItem('alias', alias); } catch {}
-      unido = true; $('entrada').style.display = 'none'; $('juego').style.display = 'flex';
-      $('msg').textContent = `Equipo ${r.equipo}${r.espectador ? ' · espectador hasta la próxima ronda' : ''}`;
+      guardar('alias', alias);
+      entrar(r);
     });
   };
 

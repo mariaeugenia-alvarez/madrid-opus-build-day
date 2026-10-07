@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor del simulador</title>
+<style>
+  :root { --bg:#0b0d12; --panel:#141824; --fg:#e8eaf0; --mute:#8b93a7; --azul:#3b82f6; --naranja:#f97316; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui, sans-serif; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; background:var(--panel); }
+  .score { font-size:22px; font-weight:700; } .azul { color:var(--azul); } .naranja { color:var(--naranja); }
+  main { display:grid; grid-template-columns: 1fr 280px; gap:12px; padding:12px; }
+  canvas { width:100%; background:#10131b; border-radius:8px; display:block; }
+  aside section { background:var(--panel); border-radius:8px; padding:10px; margin-bottom:10px; }
+  h3 { margin:0 0 6px; font-size:12px; text-transform:uppercase; color:var(--mute); letter-spacing:.05em; }
+  ol, ul { margin:0; padding-left:20px; } li { margin:2px 0; }
+  button { background:#232a3b; color:var(--fg); border:0; border-radius:6px; padding:6px 10px; cursor:pointer; margin:2px; }
+  button:hover { background:#2f3850; }
+  #ticker { font-size:12px; color:var(--mute); max-height:160px; overflow:hidden; }
+  #anuncio { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6);
+             font-size:64px; font-weight:800; text-align:center; pointer-events:none; }
+  #anuncio small { display:block; font-size:24px; font-weight:400; color:var(--mute); }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div><strong id="fase">–</strong> · ronda <span id="ronda">–</span> · <span id="reloj">–</span></div>
+  <div class="score"><span class="azul" id="pAzul">0</span> – <span class="naranja" id="pNaranja">0</span></div>
+  <div><span id="conectados">0</span> personas + <span id="bots">0</span> bots</div>
+</header>
+<main>
+  <canvas id="arena"></canvas>
+  <aside>
+    <section>
+      <h3>Control (Espacio, P, R, F)</h3>
+      <button data-a="iniciar">Iniciar</button><button data-a="pausar">Pausa</button>
+      <button data-a="saltar">Saltar fase</button><button data-a="final">Final</button>
+      <button data-a="reiniciar">Reiniciar</button>
+    </section>
+    <section><h3>Top 10</h3><ol id="top"></ol></section>
+    <section><h3>Propuestas</h3><ul id="props"></ul></section>
+    <section><h3>Ticker</h3><div id="ticker"></div></section>
+  </aside>
+</main>
+<div id="anuncio"></div>
+<script src="/shared/contract.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const { EV, ARENA } = CONTRATO;
+  const $ = (id) => document.getElementById(id);
+  const key = new URLSearchParams(location.search).get('key') || prompt('Clave del visor') || '';
+  const socket = io({ transports: ['websocket'] });
+  const canvas = $('arena'); const ctx = canvas.getContext('2d');
+  canvas.width = ARENA.ancho; canvas.height = ARENA.alto;
+  const COLOR_EQ = ['#3b82f6', '#f97316'];
+  let roster = new Map(); let estado = null; let finFase = 0; let pausado = false;
+
+  socket.on('connect', () => socket.emit(EV.VISOR_JOIN, { key }, (r) => { if (!r.ok) alert(r.error); }));
+  socket.on(EV.JUGADORES, (l) => { roster = new Map(l.map((j) => [j.id, j])); });
+  socket.on(EV.STATE, (s) => { estado = s; });
+  socket.on(EV.FASE, (f) => {
+    $('fase').textContent = f.fase + (f.pausado ? ' (pausa)' : '');
+    $('ronda').textContent = `${f.ronda}/${f.rondas}`;
+    finFase = performance.now() + f.restanteMs; pausado = f.pausado;
+  });
+  socket.on(EV.STATS, (s) => {
+    $('pAzul').textContent = s.equipos.azul; $('pNaranja').textContent = s.equipos.naranja;
+    $('conectados').textContent = s.conectados; $('bots').textContent = s.bots;
+    $('top').innerHTML = s.top10.map((j) => `<li><span style="color:${j.color}">●</span> ${esc(j.alias)} <b>${j.puntos}</b></li>`).join('');
+  });
+  socket.on(EV.PROPUESTAS, (l) => {
+    $('props').innerHTML = l.slice(-12).reverse().map((p) => `<li>${esc(p.texto)} <small>· ${p.estado} · ${p.votos}v</small>
+      ${p.estado === 'pendiente' ? `<button onclick="ctl('aprobar',${p.id})">✔</button><button onclick="ctl('rechazar',${p.id})">✖</button>` : ''}</li>`).join('');
+  });
+  socket.on(EV.EVENTO, (e) => {
+    const d = document.createElement('div'); d.textContent = e.texto; $('ticker').prepend(d);
+    while ($('ticker').children.length > 12) $('ticker').lastChild.remove();
+  });
+  socket.on(EV.ANUNCIO, (a) => {
+    $('anuncio').innerHTML = `${esc(a.titulo)}<small>${esc(a.texto)}</small>`; $('anuncio').style.display = 'grid';
+    clearTimeout(window._an); window._an = setTimeout(() => { $('anuncio').style.display = 'none'; }, 2000);
+  });
+
+  function ctl(accion, id) { socket.emit(EV.CONTROL, { accion, id }, (r) => { if (!r.ok) console.warn(r.error); }); }
+  document.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => ctl(b.dataset.a));
+  addEventListener('keydown', (e) => {
+    const m = { ' ': 'iniciar', p: 'pausar', r: 'reiniciar', f: 'final' }[e.key.toLowerCase()];
+    if (m) { e.preventDefault(); ctl(m); }
+  });
+  function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  function dibujar() {
+    const rest = pausado ? null : Math.max(0, finFase - performance.now());
+    if (rest !== null) $('reloj').textContent = `${Math.ceil(rest / 1000)} s`;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (estado) {
+      ctx.fillStyle = '#facc15';
+      for (const [x, y] of estado.o) { ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); }
+      ctx.font = '11px system-ui'; ctx.textAlign = 'center';
+      for (const [id, x, y, eq] of estado.j) {
+        const info = roster.get(id);
+        ctx.beginPath(); ctx.arc(x, y, 12, 0, 7);
+        ctx.fillStyle = info?.color || '#999'; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = COLOR_EQ[eq]; ctx.stroke();
+        if (info && !info.bot) { ctx.fillStyle = '#fff'; ctx.fillText(info.alias, x, y - 18); }
+      }
+    }
+    requestAnimationFrame(dibujar);
+  }
+  dibujar();
+</script>
+</body>
+</html>

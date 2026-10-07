@@ -9,7 +9,10 @@
   "scripts": {
     "smoke": "node infra/smoke-server.js",
     "tunnel": "bash infra/tunnel.sh",
-    "loadtest": "node infra/loadtest.js"
+    "loadtest": "node infra/loadtest.js",
+    "sim": "node sim/server.js",
+    "sim:dev": "LOBBY_S=5 RONDA_S=20 RESULTADOS_S=5 PARCHE_S=10 FINAL_S=20 CEREMONIA_S=8 node sim/server.js",
+    "sim:check": "node sim/check.js"
   },
   "dependencies": {
     "express": "^4.21.2",
